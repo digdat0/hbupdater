@@ -1,0 +1,10 @@
+# build output
+/build/
+*.nro
+*.elf
+*.nacp
+*.lst
+*.map
+
+# local scratch
+/downloads/

@@ -1,0 +1,4 @@
+{
+  "_comment": "Homebrew Updater tracks no apps by default. Add them in-app (press Y: GitHub owner/name + the .nro path on your SD card) or edit this file at sdmc:/switch/HBUpdater/apps.json.",
+  "apps": []
+}
