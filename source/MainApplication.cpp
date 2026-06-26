@@ -19,6 +19,7 @@ extern "C" {
 #include "unzip.h"
 #include "backup.h"
 #include <switch.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,6 +75,21 @@ static long file_size(const char *path) {
     long n = ftell(f);
     fclose(f);
     return n;
+}
+
+// Last-modified time of a file as "YYYY-MM-DD HH:MM", or "" if missing.
+static std::string file_mtime_str(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return std::string();
+    }
+    time_t t = st.st_mtime;
+    struct tm *lt = localtime(&t);
+    char b[24];
+    if (lt && strftime(b, sizeof(b), "%Y-%m-%d %H:%M", lt)) {
+        return std::string(b);
+    }
+    return std::string();
 }
 
 // Read the last `cap` bytes of a file (logs are append-only; the tail is what
@@ -194,7 +210,7 @@ static int catalog_match(const Catalog *cat, const char *title,
 // worker and read only by the main thread *after* threadWaitForExit (the join
 // establishes happens-before), so no lock is needed beyond g_dl_prog/g_thr_done.
 enum { JOB_NONE, JOB_CHECK_ONE, JOB_CHECK_ALL, JOB_DOWNLOAD, JOB_REVERT,
-       JOB_CATALOG };
+       JOB_CATALOG, JOB_SELFCHECK, JOB_SELFINSTALL };
 static Thread g_thr;
 static bool g_thr_active = false;        // a thread exists, awaiting join
 static volatile bool g_thr_done = false; // worker has finished
@@ -213,6 +229,10 @@ static char g_revert_prior[48];          // version restored by a revert job
 static char g_revert_id[40];             // which snapshot a revert job restores
 static char g_fail_msg[40];              // worker-set failure reason ("" = none)
 static bool g_catalog_ok = false;        // JOB_CATALOG result
+static char g_self_tag[64];              // self-update: latest HBUpdater tag
+static std::string g_self_url;           // self-update: .nro asset url
+static uint64_t g_self_size = 0;         // self-update: expected asset size
+static bool g_self_ok = false;           // JOB_SELFINSTALL result
 static std::string g_dl_tmp;             // tmp file the download produced
 
 // Set g_latest/g_state/g_status for one app from a latest tag. Shared by the
@@ -417,6 +437,54 @@ static void job_download(int idx) {
 // Fetch the latest catalog from the repo into the SD cache. Worker only.
 static void job_catalog(void) { g_catalog_ok = catalog_update(); }
 
+// Check HBUpdater's own repo for a newer release. Worker only.
+static void job_selfcheck(void) {
+    g_self_tag[0] = '\0';
+    g_self_url.clear();
+    g_self_size = 0;
+    char tag[64] = {0}, url[1024] = {0};
+    uint64_t size = 0;
+    if (update_fetch_latest(UPDATE_REPO, "HBUpdater.nro", false, tag, sizeof(tag),
+                            url, sizeof(url), &size)) {
+        snprintf(g_self_tag, sizeof(g_self_tag), "%s", tag);
+        g_self_url = url;
+        g_self_size = size;
+    }
+}
+
+// Download the new HBUpdater.nro and overwrite the running one (applies on next
+// launch). Worker only.
+static void job_selfinstall(void) {
+    g_self_ok = false;
+    g_fail_msg[0] = '\0';
+    if (g_self_url.empty()) {
+        return;
+    }
+    fs_mkdir_p(DL_TMP_DIR);
+    std::string tmp = std::string(DL_TMP_DIR) + "/self.nro";
+    g_dl_prog = 0.0f;
+    long code = 0;
+    if (!http_download(g_self_url.c_str(), tmp.c_str(), NULL, dl_progress, NULL,
+                       0, &code)) {
+        remove(tmp.c_str());
+        g_dl_prog = -1.0f;
+        return;
+    }
+    if (!validate_download(tmp.c_str(), "nro", g_self_size)) {
+        remove(tmp.c_str());
+        snprintf(g_fail_msg, sizeof(g_fail_msg), "bad download (size/format)");
+        g_dl_prog = -1.0f;
+        return;
+    }
+    std::string self =
+        g_launch_path.empty() ? std::string(DEFAULT_SELF_PATH) : g_launch_path;
+    g_self_ok = fs_move(tmp.c_str(), self.c_str());
+    if (!g_self_ok) {
+        remove(tmp.c_str());
+    }
+    g_dl_prog = -1.0f;
+}
+
 // Restore a specific backup snapshot (g_revert_id). Worker only.
 static void job_revert(int idx) {
     g_install_ok = false;
@@ -451,6 +519,12 @@ static void worker_main(void *) {
         break;
     case JOB_CATALOG:
         job_catalog();
+        break;
+    case JOB_SELFCHECK:
+        job_selfcheck();
+        break;
+    case JOB_SELFINSTALL:
+        job_selfinstall();
         break;
     default:
         break;
@@ -716,6 +790,17 @@ void MainApplication::Tick() {
             g_layout->SetStatus("reverting...");
         } else if (g_job == JOB_CATALOG) {
             g_layout->SetStatus("updating catalog...");
+        } else if (g_job == JOB_SELFCHECK) {
+            g_layout->SetStatus("checking for app update...");
+        } else if (g_job == JOB_SELFINSTALL) {
+            float p = g_dl_prog;
+            char s[48];
+            if (p >= 0.0f) {
+                snprintf(s, sizeof(s), "updating app %d%%", (int)(p * 100));
+            } else {
+                snprintf(s, sizeof(s), "updating app...");
+            }
+            g_layout->SetStatus(s);
         } else if (g_job == JOB_CHECK_ALL) {
             char s[48];
             snprintf(s, sizeof(s), "Checking %d / %d ...", g_check_done,
@@ -848,6 +933,40 @@ void MainApplication::Tick() {
         }
         return;
     }
+    if (job == JOB_SELFCHECK) {
+        if (g_self_tag[0]) {
+            // APP_VERSION_STR vs latest tag (version_cmp tolerates a 'v' prefix).
+            if (version_cmp(APP_VERSION_STR, g_self_tag) < 0) {
+                if (this->Confirm("Update HBUpdater",
+                                  std::string("v") + APP_VERSION_STR + "  ->  " +
+                                      g_self_tag + "\nDownload and install?")) {
+                    if (!start_job(JOB_SELFINSTALL, -1)) {
+                        this->ToastErr("Busy");
+                    }
+                }
+            } else {
+                this->Toast(std::string("HBUpdater is up to date (v") +
+                            APP_VERSION_STR + ")");
+            }
+        } else {
+            this->ToastErr("Update check failed");
+        }
+        if (g_mode == 3) {
+            this->RefreshSettings();
+        }
+        return;
+    }
+    if (job == JOB_SELFINSTALL) {
+        if (g_self_ok) {
+            this->Toast("Updated - restart HBUpdater to apply");
+        } else {
+            this->ToastErr(g_fail_msg[0] ? g_fail_msg : "App update failed");
+        }
+        if (g_mode == 3) {
+            this->RefreshSettings();
+        }
+        return;
+    }
 }
 
 // ---- supported-apps browse (read-only) ------------------------------------
@@ -869,8 +988,14 @@ void MainApplication::CloseCatalog() {
 }
 
 void MainApplication::RefreshCatalog() {
-    char st[64];
-    snprintf(st, sizeof(st), "%d apps", g_catalog.count);
+    std::string mt = file_mtime_str(CATALOG_CACHE);
+    char st[96];
+    if (mt.empty()) {
+        snprintf(st, sizeof(st), "%d records · bundled", g_catalog.count);
+    } else {
+        snprintf(st, sizeof(st), "%d records · OTA %s", g_catalog.count,
+                 mt.c_str());
+    }
     g_layout->SetTitle("Supported apps");
     g_layout->SetStatus(st);
     g_layout->SetFooter("B back  ZL/ZR page");
@@ -1008,20 +1133,28 @@ void MainApplication::RefreshSettings() {
         }
         g_layout->AddRow3(SETTING_LABELS[i], "", val, name_clr, dim_clr, vc);
     }
-    // Action rows (indices >= SETTING_COUNT): open sub-screens, not toggles.
+    // Action rows (indices >= SETTING_COUNT): run actions / open sub-screens.
     const pu::ui::Color act(150, 190, 240, 255);
     char sup[24], exc[24];
-    snprintf(sup, sizeof(sup), "%d", g_catalog.count);
+    snprintf(sup, sizeof(sup), "%d apps", g_catalog.count);
     snprintf(exc, sizeof(exc), "%d", g_excludes.count);
-    g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("Update HBUpdater", std::string("v") + APP_VERSION_STR, ">",
+                      name_clr, dim_clr, act);
+    g_layout->AddRow3("Update catalog", sup, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Supported apps", sup, ">", name_clr, dim_clr, act);
-    g_layout->AddRow3("Update catalog", "OTA", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Excluded apps", exc, ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
     g_layout->SetSel(keep);
 }
 
 void MainApplication::UpdateCatalog() {
     if (!start_job(JOB_CATALOG, -1)) {
+        this->ToastErr("Busy");
+    }
+}
+
+void MainApplication::UpdateSelf() {
+    if (!start_job(JOB_SELFCHECK, -1)) {
         this->ToastErr("Busy");
     }
 }
@@ -1430,13 +1563,15 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         } else if (down & HidNpadButton_A) {
             int sel = g_layout->Sel();
             if (sel == SETTING_COUNT) {
-                this->OpenLogs();
+                this->UpdateSelf(); // self-update the app
             } else if (sel == SETTING_COUNT + 1) {
-                this->OpenCatalog(); // "Supported apps" (read-only browse)
+                this->UpdateCatalog(); // OTA: fetch latest catalog
             } else if (sel == SETTING_COUNT + 2) {
-                this->UpdateCatalog(); // OTA: fetch latest catalog from the repo
+                this->OpenCatalog(); // "Supported apps" (read-only browse)
             } else if (sel == SETTING_COUNT + 3) {
                 this->OpenExcluded();
+            } else if (sel == SETTING_COUNT + 4) {
+                this->OpenLogs();
             } else {
                 this->ToggleSetting();
             }

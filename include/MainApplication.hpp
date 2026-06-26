@@ -70,6 +70,7 @@ class MainApplication : public pu::ui::Application {
     void RefreshSettings();      // rebuild the settings list view
     void ToggleSetting();        // flip the selected setting + save
     void UpdateCatalog();        // OTA: fetch the latest catalog from the repo
+    void UpdateSelf();           // self-update HBUpdater from its own releases
 
     void OpenLogs();             // settings -> log picker
     void RefreshLogMenu();       // rebuild the log-picker list
