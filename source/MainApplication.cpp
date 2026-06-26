@@ -476,11 +476,27 @@ static void job_selfinstall(void) {
         g_dl_prog = -1.0f;
         return;
     }
-    std::string self =
-        g_launch_path.empty() ? std::string(DEFAULT_SELF_PATH) : g_launch_path;
+    // Resolve the target .nro path. argv[0] may arrive without the "sdmc:" device
+    // prefix our fs layer needs (the cause of "app update failed"); add it, or
+    // fall back to the canonical install path.
+    std::string self;
+    if (g_launch_path.rfind("sdmc:/", 0) == 0) {
+        self = g_launch_path;
+    } else if (!g_launch_path.empty() && g_launch_path[0] == '/') {
+        self = std::string("sdmc:") + g_launch_path;
+    } else {
+        self = DEFAULT_SELF_PATH;
+    }
     g_self_ok = fs_move(tmp.c_str(), self.c_str());
+    FILE *lf = fopen(LOG_PATH, "a");
+    if (lf) {
+        fprintf(lf, "SELF install: argv0='%s' target='%s' ok=%d\n",
+                g_launch_path.c_str(), self.c_str(), g_self_ok ? 1 : 0);
+        fclose(lf);
+    }
     if (!g_self_ok) {
         remove(tmp.c_str());
+        snprintf(g_fail_msg, sizeof(g_fail_msg), "install failed (path)");
     }
     g_dl_prog = -1.0f;
 }
