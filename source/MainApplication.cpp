@@ -577,10 +577,16 @@ MainLayout::MainLayout() : Layout::Layout() {
     this->header = pu::ui::elm::Rectangle::New(0, 0, sw, 110,
                                                pu::ui::Color(33, 64, 124, 255));
     this->Add(this->header);
-    this->title = pu::ui::elm::TextBlock::New(45, 28, "Homebrew Updater");
-    this->title->SetColor(pu::ui::Color(255, 255, 255, 255));
+    // Brand (always shown, far left).
+    this->product = pu::ui::elm::TextBlock::New(45, 32, "hbUpdater");
+    this->product->SetColor(pu::ui::Color(255, 255, 255, 255));
+    this->Add(this->product);
+    // Page name, to the right of the brand.
+    this->title = pu::ui::elm::TextBlock::New(300, 38, "");
+    this->title->SetColor(pu::ui::Color(165, 185, 220, 255));
     this->Add(this->title);
-    this->status = pu::ui::elm::TextBlock::New(sw - 360, 36, "");
+    // Status, right-aligned in SetStatus so it never runs off-screen.
+    this->status = pu::ui::elm::TextBlock::New(sw - 360, 38, "");
     this->status->SetColor(pu::ui::Color(210, 222, 245, 255));
     this->Add(this->status);
 
@@ -603,7 +609,12 @@ MainLayout::MainLayout() : Layout::Layout() {
 }
 
 void MainLayout::SetTitle(const std::string &t) { this->title->SetText(t); }
-void MainLayout::SetStatus(const std::string &t) { this->status->SetText(t); }
+void MainLayout::SetStatus(const std::string &t) {
+    this->status->SetText(t);
+    // Pin the right edge so long status text grows leftward, never off-screen.
+    const s32 sw = (s32)pu::ui::render::ScreenWidth;
+    this->status->SetX(sw - 30 - this->status->GetWidth());
+}
 void MainLayout::SetFooter(const std::string &t) {
     std::vector<std::string> segs;
     size_t i = 0;
@@ -690,7 +701,7 @@ void MainApplication::Refresh() {
     g_asset_size.resize(g_cfg.count);
     g_state.resize(g_cfg.count);
 
-    g_layout->SetTitle(std::string("My Apps   (v") + APP_VERSION_STR + ")");
+    g_layout->SetTitle("My Apps");
     int outdated = 0;
     for (int i = 0; i < g_cfg.count; i++) {
         if (g_state[i] == 2) {

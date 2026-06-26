@@ -10,7 +10,8 @@ class MainLayout : public pu::ui::Layout {
   private:
     pu::ui::elm::Rectangle::Ref header;
     pu::ui::elm::Rectangle::Ref footer;
-    pu::ui::elm::TextBlock::Ref title;
+    pu::ui::elm::TextBlock::Ref product; // fixed brand, far left
+    pu::ui::elm::TextBlock::Ref title;   // page name, right of brand
     pu::ui::elm::TextBlock::Ref status;
     std::vector<pu::ui::elm::TextBlock::Ref> footer_segs;
     TableList::Ref list;
