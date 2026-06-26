@@ -1,0 +1,37 @@
+name: Release
+
+# Push a tag like v0.1.2 -> builds the NRO and publishes a GitHub Release with it
+# attached. Self-update + the "Update HBUpdater" action read these releases.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - name: Checkout (with Plutonium submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install portlibs
+        run: |
+          dkp-pacman -Syu --noconfirm
+          dkp-pacman -S --noconfirm --needed \
+            switch-curl switch-bzip2 switch-sdl2 switch-sdl2_ttf \
+            switch-sdl2_image switch-sdl2_gfx switch-sdl2_mixer
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: HBUpdater.nro
+          generate_release_notes: true
