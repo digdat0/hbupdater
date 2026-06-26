@@ -473,6 +473,38 @@ static void job_selfcheck(void) {
     }
 }
 
+// Overwrite dst with src's bytes via fopen "wb" (truncate IN PLACE, no remove).
+// The running .nro can't be deleted-then-recreated, but it can be truncated and
+// rewritten, so this avoids fs_move's remove(dst) step.
+static bool self_overwrite(const char *src, const char *dst) {
+    FILE *in = fopen(src, "rb");
+    FILE *out = fopen(dst, "wb");
+    net_log("SELF write: in=%d out=%d (%s)", in ? 1 : 0, out ? 1 : 0, dst);
+    if (!in || !out) {
+        if (in) {
+            fclose(in);
+        }
+        if (out) {
+            fclose(out);
+        }
+        return false;
+    }
+    char buf[65536];
+    size_t r;
+    bool ok = true;
+    while ((r = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (fwrite(buf, 1, r, out) != r) {
+            ok = false;
+            break;
+        }
+    }
+    fclose(in);
+    if (fclose(out) != 0) {
+        ok = false; // surface write/flush errors
+    }
+    return ok;
+}
+
 // Download the new HBUpdater.nro and overwrite the running one (applies on next
 // launch). Worker only.
 static void job_selfinstall(void) {
@@ -514,16 +546,13 @@ static void job_selfinstall(void) {
     } else {
         self = DEFAULT_SELF_PATH;
     }
-    g_self_ok = fs_move(tmp.c_str(), self.c_str());
-    FILE *lf = fopen(LOG_PATH, "a");
-    if (lf) {
-        fprintf(lf, "SELF install: argv0='%s' target='%s' ok=%d\n",
-                g_launch_path.c_str(), self.c_str(), g_self_ok ? 1 : 0);
-        fclose(lf);
-    }
+    // Overwrite in place (no remove) — see self_overwrite.
+    g_self_ok = self_overwrite(tmp.c_str(), self.c_str());
+    net_log("SELF install: argv0='%s' target='%s' ok=%d", g_launch_path.c_str(),
+            self.c_str(), g_self_ok ? 1 : 0);
+    remove(tmp.c_str()); // drop the staged copy
     if (!g_self_ok) {
-        remove(tmp.c_str());
-        snprintf(g_fail_msg, sizeof(g_fail_msg), "install failed (path)");
+        snprintf(g_fail_msg, sizeof(g_fail_msg), "install failed (write)");
     }
     g_dl_prog = -1.0f;
 }
