@@ -624,8 +624,10 @@ MainLayout::MainLayout() : Layout::Layout() {
     this->product = pu::ui::elm::TextBlock::New(45, 32, "hbUpdater");
     this->product->SetColor(pu::ui::Color(255, 255, 255, 255));
     this->Add(this->product);
-    // Page name, to the right of the brand.
-    this->title = pu::ui::elm::TextBlock::New(300, 38, "");
+    // Page name as a breadcrumb just right of the brand: "hbUpdater > Page".
+    s32 pw = this->product->GetWidth();
+    s32 tx = (pw > 0) ? (45 + pw + 22) : 250;
+    this->title = pu::ui::elm::TextBlock::New(tx, 32, "");
     this->title->SetColor(pu::ui::Color(165, 185, 220, 255));
     this->Add(this->title);
     // Status, right-aligned in SetStatus so it never runs off-screen.
@@ -651,7 +653,10 @@ MainLayout::MainLayout() : Layout::Layout() {
     }
 }
 
-void MainLayout::SetTitle(const std::string &t) { this->title->SetText(t); }
+void MainLayout::SetTitle(const std::string &t) {
+    // Breadcrumb separator after the brand.
+    this->title->SetText(t.empty() ? std::string() : std::string("> ") + t);
+}
 void MainLayout::SetStatus(const std::string &t) {
     this->status->SetText(t);
     // Pin the right edge so long status text grows leftward, never off-screen.
