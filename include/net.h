@@ -13,6 +13,10 @@ extern "C" {
 bool net_init(void);
 void net_exit(void);
 
+/* Append a line (printf-style) to the debug log. Shared by all modules so
+ * install / catalog / self-update steps are traceable in one place. */
+void net_log(const char *fmt, ...);
+
 /* Set (or clear, with NULL/"") a GitHub token. When set, an
  * "Authorization: Bearer <token>" header is added to every request, raising the
  * API rate limit from 60/hr to 5000/hr. The token is never logged. */

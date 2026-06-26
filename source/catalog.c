@@ -126,8 +126,19 @@ bool catalog_update(void) {
     char tmp[256];
     snprintf(tmp, sizeof(tmp), "%s.tmp", CATALOG_CACHE);
 
+    net_log("CATALOG update: %s", CATALOG_URL);
     long code = 0;
-    if (!http_download(CATALOG_URL, tmp, NULL, NULL, NULL, 0, &code)) {
+    bool dok = http_download(CATALOG_URL, tmp, NULL, NULL, NULL, 0, &code);
+    long got = -1;
+    FILE *tf = fopen(tmp, "rb");
+    if (tf) {
+        fseek(tf, 0, SEEK_END);
+        got = ftell(tf);
+        fclose(tf);
+    }
+    net_log("  download -> %s (http=%ld, %ld bytes)", dok ? "ok" : "FAIL", code,
+            got);
+    if (!dok) {
         remove(tmp);
         return false;
     }
@@ -135,12 +146,16 @@ bool catalog_update(void) {
      * working catalog. Only accept a file that parses to >=1 entry. */
     Catalog test;
     bool ok = load_from(&test, tmp);
+    int n = test.count;
     catalog_free(&test);
+    net_log("  validate -> %s (%d records)", ok ? "ok" : "FAIL", n);
     if (!ok) {
         remove(tmp);
         return false;
     }
-    return fs_move(tmp, CATALOG_CACHE);
+    bool mv = fs_move(tmp, CATALOG_CACHE);
+    net_log("  saved -> %s (%s)", mv ? "ok" : "FAIL", CATALOG_CACHE);
+    return mv;
 }
 
 void catalog_free(Catalog *cat) {

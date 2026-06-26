@@ -163,6 +163,8 @@ static const char *basename_of(const char *path) {
     return s ? s + 1 : path;
 }
 
+static long file_size(const char *path); // defined in the log-viewer section
+
 // True if `title` exactly matches one of the '\n'-separated aliases (ci).
 static bool title_in_aliases(const char *aliases, const char *title) {
     if (!title[0]) {
@@ -378,11 +380,16 @@ static void job_download(int idx) {
     }
     const char *kind = g_cfg.apps[idx].kind[0] ? g_cfg.apps[idx].kind : "nro";
     uint64_t expect = g_asset_size[idx];
+    net_log("INSTALL '%s' [%s] -> %s expect=%llu", g_cfg.apps[idx].name, kind,
+            g_cfg.apps[idx].path, (unsigned long long)expect);
 
     // Free-space guard (download + extraction + backup headroom).
     if (expect) {
         uint64_t freeb = fs_free_bytes("sdmc:/");
         if (freeb != UINT64_MAX && freeb < expect + (64ULL << 20)) {
+            net_log("  space: need %llu, free %llu -> abort",
+                    (unsigned long long)(expect + (64ULL << 20)),
+                    (unsigned long long)freeb);
             snprintf(g_fail_msg, sizeof(g_fail_msg), "not enough space");
             return;
         }
@@ -394,17 +401,23 @@ static void job_download(int idx) {
     long code = 0;
     g_dl_ok = http_download(g_url[idx].c_str(), g_dl_tmp.c_str(), NULL,
                             dl_progress, NULL, 0, &code);
+    long got = file_size(g_dl_tmp.c_str());
+    net_log("  download -> %s (http=%ld, %ld bytes)", g_dl_ok ? "ok" : "FAIL",
+            code, got);
     if (!g_dl_ok) {
         g_dl_prog = -1.0f;
         return;
     }
     if (!validate_download(g_dl_tmp.c_str(), kind, expect)) {
+        net_log("  validate -> FAIL (got %ld, expect %llu)", got,
+                (unsigned long long)expect);
         remove(g_dl_tmp.c_str());
         g_dl_ok = false;
         snprintf(g_fail_msg, sizeof(g_fail_msg), "bad download (size/format)");
         g_dl_prog = -1.0f;
         return;
     }
+    net_log("  validate -> ok");
 
     // Always back up before touching the SD (full per-install history).
     Backup *b = backup_start(g_cfg.apps[idx].repo, g_cfg.apps[idx].name, kind,
@@ -416,6 +429,8 @@ static void job_download(int idx) {
         g_install_ok = unzip_extract(g_dl_tmp.c_str(), SD_ROOT, extract_progress,
                                      NULL, b ? backup_prewrite : NULL, b, &n);
         remove(g_dl_tmp.c_str());
+        net_log("  extract -> %s (%d files to %s)",
+                g_install_ok ? "ok" : "FAIL", n, SD_ROOT);
     } else {
         if (b) {
             backup_record(b, g_cfg.apps[idx].path);
@@ -424,6 +439,8 @@ static void job_download(int idx) {
         if (!g_install_ok) {
             remove(g_dl_tmp.c_str());
         }
+        net_log("  move -> %s (%s)", g_install_ok ? "ok" : "FAIL",
+                g_cfg.apps[idx].path);
     }
     if (b) {
         backup_finish(b); // kept even on failure, so partial installs revert
@@ -449,6 +466,10 @@ static void job_selfcheck(void) {
         snprintf(g_self_tag, sizeof(g_self_tag), "%s", tag);
         g_self_url = url;
         g_self_size = size;
+        net_log("SELF check: latest=%s size=%llu (running %s)", tag,
+                (unsigned long long)size, APP_VERSION_STR);
+    } else {
+        net_log("SELF check: fetch FAILED (running %s)", APP_VERSION_STR);
     }
 }
 
@@ -464,13 +485,19 @@ static void job_selfinstall(void) {
     std::string tmp = std::string(DL_TMP_DIR) + "/self.nro";
     g_dl_prog = 0.0f;
     long code = 0;
-    if (!http_download(g_self_url.c_str(), tmp.c_str(), NULL, dl_progress, NULL,
-                       0, &code)) {
+    bool dok = http_download(g_self_url.c_str(), tmp.c_str(), NULL, dl_progress,
+                             NULL, 0, &code);
+    long got = file_size(tmp.c_str());
+    net_log("SELF install: download -> %s (http=%ld, %ld bytes, expect %llu)",
+            dok ? "ok" : "FAIL", code, got, (unsigned long long)g_self_size);
+    if (!dok) {
         remove(tmp.c_str());
+        snprintf(g_fail_msg, sizeof(g_fail_msg), "download failed");
         g_dl_prog = -1.0f;
         return;
     }
     if (!validate_download(tmp.c_str(), "nro", g_self_size)) {
+        net_log("SELF install: validate -> FAIL");
         remove(tmp.c_str());
         snprintf(g_fail_msg, sizeof(g_fail_msg), "bad download (size/format)");
         g_dl_prog = -1.0f;

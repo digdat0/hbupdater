@@ -26,7 +26,7 @@ void net_set_auth(const char *token) {
 }
 
 /* Append a line to the debug log so failures are diagnosable on-device. */
-static void net_log(const char *fmt, ...) {
+void net_log(const char *fmt, ...) {
     fs_mkdir_p(CONFIG_DIR);
     FILE *f = fopen(LOG_PATH, "a");
     if (!f) {
