@@ -22,10 +22,14 @@ jobs:
 
       - name: Install portlibs
         run: |
-          dkp-pacman -Syu --noconfirm
-          dkp-pacman -S --noconfirm --needed \
-            switch-curl switch-bzip2 switch-sdl2 switch-sdl2_ttf \
-            switch-sdl2_image switch-sdl2_gfx switch-sdl2_mixer
+          # pkg.devkitpro.org intermittently returns 403 on the db sync; retry.
+          for i in 1 2 3 4 5 6; do
+            dkp-pacman -Syu --noconfirm \
+              --needed switch-curl switch-bzip2 switch-sdl2 switch-sdl2_ttf \
+              switch-sdl2_image switch-sdl2_gfx switch-sdl2_mixer && break
+            echo "pacman attempt $i failed (transient 403?); retrying in 20s..."
+            sleep 20
+          done
 
       - name: Build
         run: make -j"$(nproc)"
