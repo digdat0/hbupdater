@@ -505,8 +505,46 @@ static bool self_overwrite(const char *src, const char *dst) {
     return ok;
 }
 
-// Download the new HBUpdater.nro and overwrite the running one (applies on next
-// launch). Worker only.
+// The app's own .nro path. argv[0] may lack the "sdmc:" device prefix; add it,
+// or fall back to the canonical install path.
+static std::string resolve_self_path() {
+    if (g_launch_path.rfind("sdmc:/", 0) == 0) {
+        return g_launch_path;
+    }
+    if (!g_launch_path.empty() && g_launch_path[0] == '/') {
+        return std::string("sdmc:") + g_launch_path;
+    }
+    return std::string(DEFAULT_SELF_PATH);
+}
+
+// Apply a pending staged self-update (written on a previous run) if the .nro is
+// now writable. The running .nro is locked, so the very start of launch is the
+// only window. Returns true if it applied AND queued a chainload of the new nro
+// (the caller should then exit so hbloader runs the new version this launch).
+static bool apply_staged_self_update() {
+    std::string self = resolve_self_path();
+    std::string staged = self + ".new";
+    if (!fs_exists(staged.c_str())) {
+        return false;
+    }
+    bool ok = self_overwrite(staged.c_str(), self.c_str());
+    net_log("STARTUP apply: '%s' -> '%s' ok=%d", staged.c_str(), self.c_str(),
+            ok ? 1 : 0);
+    if (!ok) {
+        return false; // locked: leave the .new for a retry or a manual swap
+    }
+    remove(staged.c_str());
+    if (envHasNextLoad()) {
+        envSetNextLoad(self.c_str(), self.c_str()); // chainload the new nro now
+        return true;
+    }
+    return false; // applied; runs old this launch, new next launch
+}
+
+bool MainApplication::ApplyPendingUpdate() { return apply_staged_self_update(); }
+
+// Download the new HBUpdater.nro and STAGE it beside the running one (applied at
+// next launch by apply_staged_self_update). Worker only.
 static void job_selfinstall(void) {
     g_self_ok = false;
     g_fail_msg[0] = '\0';
@@ -538,21 +576,17 @@ static void job_selfinstall(void) {
     // Resolve the target .nro path. argv[0] may arrive without the "sdmc:" device
     // prefix our fs layer needs (the cause of "app update failed"); add it, or
     // fall back to the canonical install path.
-    std::string self;
-    if (g_launch_path.rfind("sdmc:/", 0) == 0) {
-        self = g_launch_path;
-    } else if (!g_launch_path.empty() && g_launch_path[0] == '/') {
-        self = std::string("sdmc:") + g_launch_path;
-    } else {
-        self = DEFAULT_SELF_PATH;
-    }
-    // Overwrite in place (no remove) — see self_overwrite.
-    g_self_ok = self_overwrite(tmp.c_str(), self.c_str());
-    net_log("SELF install: argv0='%s' target='%s' ok=%d", g_launch_path.c_str(),
-            self.c_str(), g_self_ok ? 1 : 0);
-    remove(tmp.c_str()); // drop the staged copy
+    // Stage the validated nro beside the target (a NEW file, so writable). The
+    // running .nro is locked; it gets replaced from the staged copy at the next
+    // launch (apply_staged_self_update), or the user can swap it manually.
+    std::string self = resolve_self_path();
+    std::string staged = self + ".new";
+    g_self_ok = self_overwrite(tmp.c_str(), staged.c_str());
+    net_log("SELF install: staged='%s' ok=%d", staged.c_str(),
+            g_self_ok ? 1 : 0);
+    remove(tmp.c_str());
     if (!g_self_ok) {
-        snprintf(g_fail_msg, sizeof(g_fail_msg), "install failed (write)");
+        snprintf(g_fail_msg, sizeof(g_fail_msg), "staging failed");
     }
     g_dl_prog = -1.0f;
 }
@@ -1046,7 +1080,7 @@ void MainApplication::Tick() {
     }
     if (job == JOB_SELFINSTALL) {
         if (g_self_ok) {
-            this->Toast("Updated - restart HBUpdater to apply");
+            this->Toast("Update staged - restart to apply");
         } else {
             this->ToastErr(g_fail_msg[0] ? g_fail_msg : "App update failed");
         }

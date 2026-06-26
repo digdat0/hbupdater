@@ -47,6 +47,9 @@ class MainApplication : public pu::ui::Application {
 
     void OnLoad() override;
     static void SetLaunchPath(const std::string &p);
+    // Apply a staged self-update before the UI; true means it chainloaded the new
+    // nro and main() should return.
+    static bool ApplyPendingUpdate();
 
     void Toast(const std::string &msg);
     void ToastErr(const std::string &msg);
