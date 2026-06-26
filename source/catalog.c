@@ -1,10 +1,14 @@
 #include "catalog.h"
+#include "config.h"
 #include "jsonutil.h"
+#include "net.h"
+#include "fsutil.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define CATALOG_PATH "romfs:/known_repos.json"
+#define CATALOG_BUNDLED "romfs:/known_repos.json" /* baked into the NRO */
 
 static void sset(char *dst, size_t dsz, const char *src) {
     if (dsz == 0) {
@@ -19,12 +23,12 @@ static void sset(char *dst, size_t dsz, const char *src) {
     dst[i] = '\0';
 }
 
-bool catalog_load(Catalog *cat) {
+static bool load_from(Catalog *cat, const char *path) {
     cat->items = NULL;
     cat->count = 0;
 
     size_t len = 0;
-    char *js = json_read_file(CATALOG_PATH, &len);
+    char *js = json_read_file(path, &len);
     if (!js) {
         return false;
     }
@@ -105,6 +109,38 @@ bool catalog_load(Catalog *cat) {
     free(tok);
     free(js);
     return cat->count > 0;
+}
+
+bool catalog_load(Catalog *cat) {
+    /* Prefer the OTA cache on the SD (updated independently of the NRO); fall
+     * back to the copy bundled in romfs. */
+    if (load_from(cat, CATALOG_CACHE)) {
+        return true;
+    }
+    catalog_free(cat); /* discard any partial */
+    return load_from(cat, CATALOG_BUNDLED);
+}
+
+bool catalog_update(void) {
+    fs_mkdir_p(CONFIG_DIR);
+    char tmp[256];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", CATALOG_CACHE);
+
+    long code = 0;
+    if (!http_download(CATALOG_URL, tmp, NULL, NULL, NULL, 0, &code)) {
+        remove(tmp);
+        return false;
+    }
+    /* Validate before promoting: a truncated/garbage download must not replace a
+     * working catalog. Only accept a file that parses to >=1 entry. */
+    Catalog test;
+    bool ok = load_from(&test, tmp);
+    catalog_free(&test);
+    if (!ok) {
+        remove(tmp);
+        return false;
+    }
+    return fs_move(tmp, CATALOG_CACHE);
 }
 
 void catalog_free(Catalog *cat) {

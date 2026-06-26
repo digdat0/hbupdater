@@ -29,6 +29,14 @@ extern "C" {
 #define UPDATE_REPO "digdat0/hbupdater"
 #define DEFAULT_SELF_PATH "sdmc:/switch/HBUpdater/HBUpdater.nro"
 
+/* Catalog OTA: the app pulls the latest catalog from the repo (raw CDN, not the
+ * rate-limited API) into a SD cache, preferred over the bundled romfs copy.
+ * Pushing romfs/known_repos.json to main updates every user with no NRO rebuild. */
+#define CATALOG_CACHE "sdmc:/switch/HBUpdater/known_repos.json"
+#define CATALOG_URL                                                            \
+    "https://raw.githubusercontent.com/digdat0/hbupdater/main/romfs/"          \
+    "known_repos.json"
+
 /* One tracked homebrew app. */
 typedef struct {
     char name[64];     /* display name */

@@ -69,6 +69,7 @@ class MainApplication : public pu::ui::Application {
     void OpenSettings();         // enter the settings/toggles screen
     void RefreshSettings();      // rebuild the settings list view
     void ToggleSetting();        // flip the selected setting + save
+    void UpdateCatalog();        // OTA: fetch the latest catalog from the repo
 
     void OpenLogs();             // settings -> log picker
     void RefreshLogMenu();       // rebuild the log-picker list

@@ -25,10 +25,16 @@ typedef struct {
     int count;
 } Catalog;
 
-/* Load the bundled catalog. Returns true and fills `cat` on success; on failure
- * leaves an empty (count==0) catalog. Caller must catalog_free(). */
+/* Load the catalog, preferring the OTA cache on the SD over the bundled romfs
+ * copy. Returns true on success; leaves an empty catalog on failure. Caller
+ * must catalog_free(). */
 bool catalog_load(Catalog *cat);
 void catalog_free(Catalog *cat);
+
+/* Download the latest catalog from the repo (CATALOG_URL) into the SD cache.
+ * Validates before replacing the cache. Returns true on success. Network call —
+ * run off the render thread. */
+bool catalog_update(void);
 
 #ifdef __cplusplus
 }

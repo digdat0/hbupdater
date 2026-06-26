@@ -193,7 +193,8 @@ static int catalog_match(const Catalog *cat, const char *title,
 // Plutonium rendering is not thread-safe. Result vectors are written only by the
 // worker and read only by the main thread *after* threadWaitForExit (the join
 // establishes happens-before), so no lock is needed beyond g_dl_prog/g_thr_done.
-enum { JOB_NONE, JOB_CHECK_ONE, JOB_CHECK_ALL, JOB_DOWNLOAD, JOB_REVERT };
+enum { JOB_NONE, JOB_CHECK_ONE, JOB_CHECK_ALL, JOB_DOWNLOAD, JOB_REVERT,
+       JOB_CATALOG };
 static Thread g_thr;
 static bool g_thr_active = false;        // a thread exists, awaiting join
 static volatile bool g_thr_done = false; // worker has finished
@@ -211,6 +212,7 @@ static bool g_force = false;             // reinstall even if up to date
 static char g_revert_prior[48];          // version restored by a revert job
 static char g_revert_id[40];             // which snapshot a revert job restores
 static char g_fail_msg[40];              // worker-set failure reason ("" = none)
+static bool g_catalog_ok = false;        // JOB_CATALOG result
 static std::string g_dl_tmp;             // tmp file the download produced
 
 // Set g_latest/g_state/g_status for one app from a latest tag. Shared by the
@@ -412,6 +414,9 @@ static void job_download(int idx) {
     g_dl_prog = -1.0f;
 }
 
+// Fetch the latest catalog from the repo into the SD cache. Worker only.
+static void job_catalog(void) { g_catalog_ok = catalog_update(); }
+
 // Restore a specific backup snapshot (g_revert_id). Worker only.
 static void job_revert(int idx) {
     g_install_ok = false;
@@ -443,6 +448,9 @@ static void worker_main(void *) {
         break;
     case JOB_REVERT:
         job_revert(g_job_idx);
+        break;
+    case JOB_CATALOG:
+        job_catalog();
         break;
     default:
         break;
@@ -706,6 +714,8 @@ void MainApplication::Tick() {
             g_layout->SetStatus(s);
         } else if (g_job == JOB_REVERT) {
             g_layout->SetStatus("reverting...");
+        } else if (g_job == JOB_CATALOG) {
+            g_layout->SetStatus("updating catalog...");
         } else if (g_job == JOB_CHECK_ALL) {
             char s[48];
             snprintf(s, sizeof(s), "Checking %d / %d ...", g_check_done,
@@ -819,6 +829,23 @@ void MainApplication::Tick() {
         g_mode = 0;
         this->Refresh();
         g_layout->SetSel(g_list_sel);
+        return;
+    }
+    if (job == JOB_CATALOG) {
+        if (g_catalog_ok) {
+            catalog_free(&g_catalog);
+            catalog_load(&g_catalog);
+            char m[48];
+            snprintf(m, sizeof(m), "Catalog updated: %d apps", g_catalog.count);
+            this->Toast(m);
+        } else {
+            this->ToastErr("Catalog update failed");
+        }
+        if (g_mode == 3) {
+            this->RefreshSettings(); // refresh the shown count
+        } else {
+            this->Refresh();
+        }
         return;
     }
 }
@@ -988,8 +1015,15 @@ void MainApplication::RefreshSettings() {
     snprintf(exc, sizeof(exc), "%d", g_excludes.count);
     g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Supported apps", sup, ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("Update catalog", "OTA", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Excluded apps", exc, ">", name_clr, dim_clr, act);
     g_layout->SetSel(keep);
+}
+
+void MainApplication::UpdateCatalog() {
+    if (!start_job(JOB_CATALOG, -1)) {
+        this->ToastErr("Busy");
+    }
 }
 
 void MainApplication::ToggleSetting() {
@@ -1400,6 +1434,8 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             } else if (sel == SETTING_COUNT + 1) {
                 this->OpenCatalog(); // "Supported apps" (read-only browse)
             } else if (sel == SETTING_COUNT + 2) {
+                this->UpdateCatalog(); // OTA: fetch latest catalog from the repo
+            } else if (sel == SETTING_COUNT + 3) {
                 this->OpenExcluded();
             } else {
                 this->ToggleSetting();
