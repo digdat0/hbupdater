@@ -1,11 +1,13 @@
 #pragma once
 
-// A lightweight scrolling list element with real columns: a left cell (name,
-// truncated with "...") and an optional right cell (size / info) that is
-// right-aligned as a true column. Plutonium's built-in Menu packs a row into a
-// single text label, which can't form aligned columns — this renders each cell
-// itself. Navigation is driven by the app (MoveBy / SetSelected); OnInput is a
-// no-op so there's a single source of truth for selection.
+// A lightweight scrolling list with real columns and an optional header row.
+// Three logical cells per row: c0 (name, left-aligned, flex width, truncated
+// with "..."), c1 (e.g. version) and c2 (e.g. status) as fixed right-aligned
+// columns. Plutonium's built-in Menu packs a row into one label and can't form
+// aligned columns, so this renders each cell itself. Navigation is driven by
+// the app (MoveBy / SetSelected); OnInput is a no-op so selection has a single
+// source of truth. Visible cells are cached as textures and only re-rendered
+// when the window or content changes.
 
 #include <pu/Plutonium>
 #include <string>
@@ -14,44 +16,73 @@
 class TableList : public pu::ui::elm::Element {
   public:
     struct Row {
-        std::string left;
-        std::string right;
-        pu::ui::Color lclr;
-        pu::ui::Color rclr;
-        bool has_right;
+        std::string c0, c1, c2;
+        pu::ui::Color clr0, clr1, clr2;
         float progress; // 0..1 draws a progress bar; <0 = none
     };
 
   private:
+    // Default member initializers are load-bearing: RowCache rc; (trailing empty
+    // rows) and the hdr_cache member are default-constructed, and freeCell()
+    // would otherwise DeleteTexture an uninitialized garbage pointer -> crash.
     struct Cell {
-        pu::sdl2::Texture tex;
-        s32 w;
-        s32 h;
+        pu::sdl2::Texture tex = nullptr;
+        s32 w = 0;
+        s32 h = 0;
+    };
+    struct RowCache {
+        Cell c0, c1, c2;
     };
 
     s32 x, y, w, row_h;
     s32 rows_visible;
     s32 sel;
     s32 scroll_top;
-    pu::ui::Color row_bg, row_alt_bg, focus_bg, scroll_clr;
-    std::string font;
+    pu::ui::Color row_bg, row_alt_bg, focus_bg, scroll_clr, hdr_bg, hdr_fg;
+    std::string font, hdr_font;
     std::vector<Row> rows;
 
-    // Visible-window texture cache: only rebuilt when the window or content
-    // changes, so a static list does not re-render text every frame.
-    std::vector<Cell> cache_l, cache_r;
+    bool has_header;
+    std::string h0, h1, h2;
+
+    std::vector<RowCache> cache; // visible data window
+    RowCache hdr_cache;
+    bool hdr_dirty;
     s32 cache_top;
     bool dirty;
 
     static constexpr s32 PadX = 26;
+    static constexpr s32 GAP = 18;
+    static constexpr s32 HDR_H = 44;
+    // The two right columns together take ~half the list width, split fairly
+    // evenly (status gets a bit more for "x -> y" text); name flexes in the rest.
+    static constexpr s32 COL1_W = 300; // version / "Installed" column
+    static constexpr s32 COL2_W = 340; // status / "Update" column
+
+    // Column geometry, relative to the element's x.
+    s32 c2_right() const { return this->w - PadX; }
+    s32 c2_left() const { return this->w - PadX - COL2_W; }
+    s32 c1_right() const { return this->c2_left() - GAP; }
+    s32 c1_left() const { return this->c1_right() - COL1_W; }
+    s32 c0_max() const {
+        s32 m = this->c1_left() - GAP - PadX;
+        return m < 60 ? 60 : m;
+    }
+    s32 data_top() const { return this->has_header ? HDR_H : 0; }
+    s32 data_rows() const {
+        s32 h = this->row_h * this->rows_visible - this->data_top();
+        s32 n = h / this->row_h;
+        return n < 1 ? 1 : n;
+    }
 
     void EnsureVisible() {
+        const s32 vis = this->data_rows();
         if (this->sel < this->scroll_top) {
             this->scroll_top = this->sel;
-        } else if (this->sel >= this->scroll_top + this->rows_visible) {
-            this->scroll_top = this->sel - this->rows_visible + 1;
+        } else if (this->sel >= this->scroll_top + vis) {
+            this->scroll_top = this->sel - vis + 1;
         }
-        s32 maxtop = (s32)this->rows.size() - this->rows_visible;
+        s32 maxtop = (s32)this->rows.size() - vis;
         if (maxtop < 0) {
             maxtop = 0;
         }
@@ -63,47 +94,67 @@ class TableList : public pu::ui::elm::Element {
         }
     }
 
-    // RenderText returns a raw SDL_Texture* (sdl2::Texture) that must be freed
-    // explicitly, or every cache rebuild leaks GPU memory.
+    // RenderText returns a raw SDL_Texture* that must be freed explicitly, or
+    // every cache rebuild leaks GPU memory.
+    static void freeCell(Cell &c) {
+        if (c.tex) {
+            pu::ui::render::DeleteTexture(c.tex);
+            c.tex = nullptr;
+        }
+    }
     void FreeCache() {
-        for (auto &c : this->cache_l) {
-            if (c.tex) {
-                pu::ui::render::DeleteTexture(c.tex);
-            }
+        for (auto &rc : this->cache) {
+            freeCell(rc.c0);
+            freeCell(rc.c1);
+            freeCell(rc.c2);
         }
-        for (auto &c : this->cache_r) {
-            if (c.tex) {
-                pu::ui::render::DeleteTexture(c.tex);
-            }
+        this->cache.clear();
+    }
+    void FreeHeader() {
+        freeCell(this->hdr_cache.c0);
+        freeCell(this->hdr_cache.c1);
+        freeCell(this->hdr_cache.c2);
+    }
+
+    Cell mk(const std::string &font_, const std::string &text,
+            pu::ui::Color clr, s32 maxw) {
+        Cell c{nullptr, 0, 0};
+        if (!text.empty()) {
+            c.tex = maxw > 0
+                        ? pu::ui::render::RenderText(font_, text, clr, (u32)maxw)
+                        : pu::ui::render::RenderText(font_, text, clr);
+            c.w = pu::ui::render::GetTextureWidth(c.tex);
+            c.h = pu::ui::render::GetTextureHeight(c.tex);
         }
-        this->cache_l.clear();
-        this->cache_r.clear();
+        return c;
+    }
+
+    void RebuildHeader() {
+        this->FreeHeader();
+        if (this->has_header) {
+            this->hdr_cache.c0 = mk(this->hdr_font, this->h0, this->hdr_fg, c0_max());
+            this->hdr_cache.c1 = mk(this->hdr_font, this->h1, this->hdr_fg, COL1_W);
+            this->hdr_cache.c2 = mk(this->hdr_font, this->h2, this->hdr_fg, COL2_W);
+        }
+        this->hdr_dirty = false;
     }
 
     void RebuildCache() {
         this->FreeCache();
-        for (s32 i = 0; i < this->rows_visible; i++) {
+        const s32 vis = this->data_rows();
+        for (s32 i = 0; i < vis; i++) {
             s32 ridx = this->scroll_top + i;
-            Cell lc{nullptr, 0, 0}, rc{nullptr, 0, 0};
+            RowCache rc;
             if (ridx >= 0 && ridx < (s32)this->rows.size()) {
                 Row &r = this->rows[ridx];
-                if (r.has_right && !r.right.empty()) {
-                    rc.tex = pu::ui::render::RenderText(this->font, r.right,
-                                                        r.rclr);
-                    rc.w = pu::ui::render::GetTextureWidth(rc.tex);
-                    rc.h = pu::ui::render::GetTextureHeight(rc.tex);
-                }
-                s32 left_max = this->w - 2 * PadX - (rc.tex ? rc.w + PadX : 0);
-                if (left_max < 60) {
-                    left_max = 60;
-                }
-                lc.tex = pu::ui::render::RenderText(this->font, r.left, r.lclr,
-                                                    (u32)left_max);
-                lc.w = pu::ui::render::GetTextureWidth(lc.tex);
-                lc.h = pu::ui::render::GetTextureHeight(lc.tex);
+                rc.c1 = mk(this->font, r.c1, r.clr1, COL1_W);
+                rc.c2 = mk(this->font, r.c2, r.clr2, COL2_W);
+                // Single-column rows (log lines, messages) get the full width.
+                bool single = r.c1.empty() && r.c2.empty();
+                rc.c0 = mk(this->font, r.c0, r.clr0,
+                           single ? (this->w - 2 * PadX) : this->c0_max());
             }
-            this->cache_l.push_back(lc);
-            this->cache_r.push_back(rc);
+            this->cache.push_back(rc);
         }
         this->cache_top = this->scroll_top;
         this->dirty = false;
@@ -114,14 +165,33 @@ class TableList : public pu::ui::elm::Element {
               const s32 rows_visible)
         : x(x), y(y), w(w), row_h(row_h), rows_visible(rows_visible), sel(0),
           scroll_top(0), row_bg(22, 23, 27, 255), row_alt_bg(28, 30, 36, 255),
-          // Teal selection highlight, distinct from the blue header/tab bar.
           focus_bg(28, 122, 116, 255), scroll_clr(80, 86, 100, 255),
-          cache_top(-1), dirty(true) {
+          hdr_bg(16, 17, 21, 255), hdr_fg(150, 157, 172, 255), has_header(false),
+          hdr_dirty(true), cache_top(-1), dirty(true) {
         this->font = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::MediumLarge);
+        this->hdr_font = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Medium);
     }
     PU_SMART_CTOR(TableList)
 
-    ~TableList() { this->FreeCache(); }
+    ~TableList() {
+        this->FreeCache();
+        this->FreeHeader();
+    }
+
+    void SetHeaders(const std::string &a, const std::string &b,
+                    const std::string &c) {
+        this->h0 = a;
+        this->h1 = b;
+        this->h2 = c;
+        this->has_header = true;
+        this->hdr_dirty = true;
+        this->dirty = true;
+    }
+    void ClearHeaders() {
+        this->has_header = false;
+        this->hdr_dirty = true;
+        this->dirty = true;
+    }
 
     void Clear() {
         this->rows.clear();
@@ -130,19 +200,29 @@ class TableList : public pu::ui::elm::Element {
         this->dirty = true;
     }
     void AddRow(const std::string &left, const pu::ui::Color lclr) {
-        this->rows.push_back(Row{left, "", lclr, lclr, false, -1.0f});
+        this->rows.push_back(Row{left, "", "", lclr, lclr, lclr, -1.0f});
         this->dirty = true;
     }
+    // Back-compat: a name + a single right-hand status column.
     void AddRow2(const std::string &left, const std::string &right,
                  const pu::ui::Color lclr, const pu::ui::Color rclr,
                  const float progress = -1.0f) {
-        this->rows.push_back(Row{left, right, lclr, rclr, true, progress});
+        this->rows.push_back(Row{left, "", right, lclr, rclr, rclr, progress});
+        this->dirty = true;
+    }
+    // Full three-column row: name, middle (version), right (status).
+    void AddRow3(const std::string &name, const std::string &mid,
+                 const std::string &right, const pu::ui::Color nclr,
+                 const pu::ui::Color mclr, const pu::ui::Color rclr,
+                 const float progress = -1.0f) {
+        this->rows.push_back(
+            Row{name, mid, right, nclr, mclr, rclr, progress});
         this->dirty = true;
     }
 
     s32 Count() { return (s32)this->rows.size(); }
     s32 GetSelected() { return this->sel; }
-    s32 RowsVisible() { return this->rows_visible; }
+    s32 RowsVisible() { return this->data_rows(); }
     void SetSelected(const s32 i) {
         s32 n = (s32)this->rows.size();
         if (n <= 0) {
@@ -154,7 +234,6 @@ class TableList : public pu::ui::elm::Element {
         this->EnsureVisible();
     }
     void MoveBy(const s32 d) { this->SetSelected(this->sel + d); }
-    // Single-step move that wraps around the ends (top<->bottom).
     void Step(const s32 d) {
         s32 n = (s32)this->rows.size();
         if (n <= 0) {
@@ -176,12 +255,41 @@ class TableList : public pu::ui::elm::Element {
 
     void OnRender(pu::ui::render::Renderer::Ref &drawer, const s32 rx,
                   const s32 ry) override {
+        if (this->hdr_dirty) {
+            this->RebuildHeader();
+        }
         if (this->dirty || this->cache_top != this->scroll_top) {
             this->RebuildCache();
         }
-        for (s32 i = 0; i < this->rows_visible; i++) {
+
+        // Header strip.
+        if (this->has_header) {
+            drawer->RenderRectangleFill(this->hdr_bg, rx, ry, this->w, HDR_H);
+            s32 cy = ry + (HDR_H - 28) / 2;
+            if (this->hdr_cache.c0.tex) {
+                drawer->RenderTexture(this->hdr_cache.c0.tex, rx + PadX,
+                                      ry + (HDR_H - this->hdr_cache.c0.h) / 2);
+            }
+            if (this->hdr_cache.c1.tex) {
+                drawer->RenderTexture(
+                    this->hdr_cache.c1.tex,
+                    rx + this->c1_right() - this->hdr_cache.c1.w,
+                    ry + (HDR_H - this->hdr_cache.c1.h) / 2);
+            }
+            if (this->hdr_cache.c2.tex) {
+                drawer->RenderTexture(
+                    this->hdr_cache.c2.tex,
+                    rx + this->c2_right() - this->hdr_cache.c2.w,
+                    ry + (HDR_H - this->hdr_cache.c2.h) / 2);
+            }
+            (void)cy;
+        }
+
+        const s32 top = this->data_top();
+        const s32 vis = this->data_rows();
+        for (s32 i = 0; i < vis; i++) {
             s32 ridx = this->scroll_top + i;
-            s32 rowy = ry + i * this->row_h;
+            s32 rowy = ry + top + i * this->row_h;
             bool has = (ridx >= 0 && ridx < (s32)this->rows.size());
             pu::ui::Color bg =
                 (has && ridx == this->sel)
@@ -191,7 +299,6 @@ class TableList : public pu::ui::elm::Element {
             if (!has) {
                 continue;
             }
-            // Progress bar (e.g. active download): thin track along the bottom.
             float prog = this->rows[ridx].progress;
             if (prog >= 0.0f) {
                 if (prog > 1.0f) {
@@ -206,32 +313,36 @@ class TableList : public pu::ui::elm::Element {
                 drawer->RenderRectangleFill(pu::ui::Color(120, 225, 150, 255), bx,
                                             by, (s32)(bw * prog), bh);
             }
-            Cell &lc = this->cache_l[i];
-            Cell &rc = this->cache_r[i];
-            if (rc.tex) {
-                drawer->RenderTexture(rc.tex, rx + this->w - PadX - rc.w,
-                                      rowy + (this->row_h - rc.h) / 2);
+            RowCache &rc = this->cache[i];
+            if (rc.c2.tex) {
+                drawer->RenderTexture(rc.c2.tex, rx + this->c2_right() - rc.c2.w,
+                                      rowy + (this->row_h - rc.c2.h) / 2);
             }
-            if (lc.tex) {
-                drawer->RenderTexture(lc.tex, rx + PadX,
-                                      rowy + (this->row_h - lc.h) / 2);
+            if (rc.c1.tex) {
+                drawer->RenderTexture(rc.c1.tex, rx + this->c1_right() - rc.c1.w,
+                                      rowy + (this->row_h - rc.c1.h) / 2);
+            }
+            if (rc.c0.tex) {
+                drawer->RenderTexture(rc.c0.tex, rx + PadX,
+                                      rowy + (this->row_h - rc.c0.h) / 2);
             }
         }
-        // Scrollbar thumb when the list overflows.
+
+        // Scrollbar thumb when the data overflows.
         s32 n = (s32)this->rows.size();
-        if (n > this->rows_visible) {
-            s32 track_h = this->row_h * this->rows_visible;
+        if (n > vis) {
+            s32 track_h = this->row_h * vis;
             s32 sb_w = 6;
             s32 sb_x = rx + this->w - sb_w;
-            s32 thumb_h = (s32)((double)track_h * this->rows_visible / n);
+            s32 thumb_h = (s32)((double)track_h * vis / n);
             if (thumb_h < 32) {
                 thumb_h = 32;
             }
-            s32 maxtop = n - this->rows_visible;
-            s32 thumb_y =
-                ry + (maxtop > 0 ? (s32)((double)(track_h - thumb_h) *
-                                         this->scroll_top / maxtop)
-                                 : 0);
+            s32 maxtop = n - vis;
+            s32 thumb_y = ry + top +
+                          (maxtop > 0 ? (s32)((double)(track_h - thumb_h) *
+                                              this->scroll_top / maxtop)
+                                      : 0);
             drawer->RenderRectangleFill(this->scroll_clr, sb_x, thumb_y, sb_w,
                                         thumb_h);
         }

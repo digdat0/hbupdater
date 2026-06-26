@@ -21,6 +21,9 @@ bool fs_ensure_parent(const char *file_path);
 /* Move/rename a file, falling back to copy+unlink across mount points. */
 bool fs_move(const char *src, const char *dst);
 
+/* Copy a file (creating dst's parent dirs). Returns true on success. */
+bool fs_copy(const char *src, const char *dst);
+
 /* true if path exists. */
 bool fs_exists(const char *path);
 

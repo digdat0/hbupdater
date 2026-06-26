@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HBUpdater catalog editor</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, "Segoe UI", Arial, sans-serif; margin: 0;
+         background: #0f1115; color: #e6e9ef; }
+  header { position: sticky; top: 0; z-index: 6; background: #161a22;
+           border-bottom: 1px solid #2a2f3a; }
+  .tabs { display: flex; gap: 4px; padding: 8px 18px 0; align-items: center; }
+  .tabs h1 { font-size: 15px; margin: 0 14px 0 0; }
+  .tab { background: transparent; color: #9aa3b2; border: 0; border-bottom: 2px solid transparent;
+         padding: 8px 14px; cursor: pointer; font-size: 13px; }
+  .tab.active { color: #e6e9ef; border-bottom-color: #2b6cff; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+             padding: 10px 18px; border-top: 1px solid #1f242e; }
+  .btn { background: #2b6cff; color: #fff; border: 0; padding: 7px 12px;
+         border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn.alt { background: #2a2f3a; color: #e6e9ef; }
+  .btn.sm { padding: 3px 8px; font-size: 12px; }
+  .btn.del { background: #5a2330; color: #ffb4b4; }
+  .btn.add { background: #1f6f3f; }
+  .btn.promote { background: #1f6f3f; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  #search { padding: 6px 10px; border-radius: 6px; border: 1px solid #2a2f3a;
+            background: #0f1115; color: #e6e9ef; min-width: 200px; font-size: 13px; }
+  .count { color: #9aa3b2; font-size: 12px; }
+  .help { padding: 8px 18px; font-size: 12px; color: #9aa3b2; background: #11151c; }
+  .help b.ok { color: #86e29a; } .help b.bad { color: #ff8b8b; } .help b.warn { color: #f0c674; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 5px 7px; border-bottom: 1px solid #1f242e; font-size: 13px;
+           text-align: left; vertical-align: top; }
+  th { position: sticky; top: 96px; background: #11151c; z-index: 4; }
+  td input[type=text], td select {
+    width: 100%; background: #0f1115; color: #e6e9ef; border: 1px solid #2a2f3a;
+    border-radius: 4px; padding: 4px 6px; font-size: 12px;
+    font-family: ui-monospace, Consolas, monospace; }
+  a { color: #6ea8ff; text-decoration: none; } a:hover { text-decoration: underline; }
+  .mut { color: #9aa3b2; }
+  .ok { color: #86e29a; } .bad { color: #ff8b8b; } .warn { color: #f0c674; }
+  .status { white-space: nowrap; font-weight: 600; }
+  .links a { margin-right: 8px; white-space: nowrap; }
+  tr:hover td { background: #141823; }
+  tr.new td { background: #142318; }
+  tr.new td:first-child { border-left: 3px solid #3ddc84; }
+  tr.promoted { opacity: .4; }
+  .empty { padding: 40px; text-align: center; color: #9aa3b2; }
+  .dirty input { border-color: #2b6cff; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="tabs">
+    <h1>HBUpdater catalog editor</h1>
+    <button class="tab active" id="tabCat">Catalog</button>
+    <button class="tab" id="tabUnm">Unmatched</button>
+    <input type="password" id="token" placeholder="GitHub token (optional → 5000/hr checks)"
+           style="margin-left:auto;min-width:280px;padding:6px 10px;border-radius:6px;border:1px solid #2a2f3a;background:#0f1115;color:#e6e9ef;font-size:12px;font-family:ui-monospace,Consolas,monospace">
+    <span class="count" id="tokState"></span>
+  </div>
+
+  <!-- Catalog toolbar -->
+  <div class="toolbar" id="catBar">
+    <input type="file" id="file" accept=".json,application/json">
+    <input type="text" id="search" placeholder="filter by name / repo…">
+    <button class="btn add" id="addApp">+ Add app</button>
+    <button class="btn alt" id="checkAll">Check visible</button>
+    <button class="btn" id="download">Download JSON</button>
+    <span class="count" id="catCount"></span>
+  </div>
+
+  <!-- Unmatched toolbar -->
+  <div class="toolbar hidden" id="unmBar">
+    <input type="file" id="ufile" accept=".log,.txt,text/plain">
+    <span class="count" id="unmCount"></span>
+    <span class="mut" style="font-size:12px">Fill the <b>Repo</b>, then <b>↑ Promote</b> into the catalog. Switch to the Catalog tab to Download.</span>
+  </div>
+</header>
+
+<div class="help" id="help">
+  Status: <b class="ok">200</b> good · <b class="bad">404</b> wrong/missing repo · <b class="warn">403</b> rate-limited (URL is fine).
+  Promoted entries appear at the top of the Catalog with a <b style="color:#3ddc84">green border</b>.
+</div>
+
+<!-- Catalog table -->
+<section id="catSection">
+  <table>
+    <thead><tr>
+      <th>#</th><th>Name</th><th>NACP names<br><span class="mut">(comma-sep)</span></th>
+      <th>Repo</th><th>Links</th><th>Asset</th><th>Kind</th><th>Default path</th>
+      <th>Pre</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody id="catRows"></tbody>
+  </table>
+  <div class="empty" id="catEmpty">Load a known_repos.json file, or press <b>+ Add app</b>.</div>
+</section>
+
+<!-- Unmatched table -->
+<section id="unmSection" class="hidden">
+  <table>
+    <thead><tr>
+      <th>#</th><th>Name (NACP title)</th><th>Repo</th><th>Links</th>
+      <th>Asset</th><th>Kind</th><th>Default path</th><th>Ver</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody id="unmRows"></tbody>
+  </table>
+  <div class="empty" id="unmEmpty">Load an <code>unmatched.log</code> (from <code>sdmc:/switch/HBUpdater/</code>).</div>
+</section>
+
+<script>
+let apps = [];        // catalog entries
+let unmatched = [];   // imported unmatched.log rows (partial entries)
+const KINDS = ['nro', 'ovl', 'bin', 'zip', '7z'];
+
+const esc = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const ghRepo = r => 'https://github.com/' + (r || '');
+const ghRel  = r => 'https://github.com/' + (r || '') + '/releases';
+const $ = id => document.getElementById(id);
+
+/* ---- GitHub token (stored in this browser's localStorage) ---- */
+const tokenEl = $('token');
+function updateTokState() {
+  const t = (tokenEl.value || '').trim();
+  $('tokState').textContent = t ? 'token set (5000/hr)' : '60/hr';
+  $('tokState').style.color = t ? '#86e29a' : '#9aa3b2';
+}
+tokenEl.value = localStorage.getItem('hbu_gh_token') || '';
+tokenEl.addEventListener('input', () => {
+  localStorage.setItem('hbu_gh_token', tokenEl.value.trim());
+  updateTokState();
+});
+updateTokState();
+function ghHeaders() {
+  const h = { 'Accept': 'application/vnd.github+json' };
+  const t = (tokenEl.value || '').trim();
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function blankApp() {
+  return { name: '', repo: '', nacp_name: [], asset: '', asset_kind: 'nro',
+           tag_example: '', prerelease: false, author: '', default_path: '', category: '' };
+}
+function kindSelect(idx, kind, k) {
+  return '<select data-i="' + idx + '" data-k="' + k + '">' +
+    KINDS.map(x => '<option value="' + x + '"' + (x === (kind || 'nro') ? ' selected' : '') + '>' + x + '</option>').join('') +
+    '</select>';
+}
+
+/* ---- tabs ---- */
+function showTab(which) {
+  const cat = which === 'cat';
+  $('tabCat').classList.toggle('active', cat);
+  $('tabUnm').classList.toggle('active', !cat);
+  $('catBar').classList.toggle('hidden', !cat);
+  $('unmBar').classList.toggle('hidden', cat);
+  $('catSection').classList.toggle('hidden', !cat);
+  $('unmSection').classList.toggle('hidden', cat);
+}
+$('tabCat').addEventListener('click', () => showTab('cat'));
+$('tabUnm').addEventListener('click', () => showTab('unm'));
+
+/* ---- catalog ---- */
+$('file').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const j = JSON.parse(r.result);
+      apps = Array.isArray(j) ? j : (j.apps || []);
+      apps.forEach(a => { if (!Array.isArray(a.nacp_name)) a.nacp_name = a.nacp_name ? [a.nacp_name] : []; });
+      renderCatalog();
+    } catch (err) { alert('Could not parse JSON: ' + err.message); }
+  };
+  r.readAsText(f);
+});
+
+function renderCatalog() {
+  const q = $('search').value.toLowerCase();
+  const tb = $('catRows'); tb.innerHTML = '';
+  let shown = 0;
+  apps.forEach((a, idx) => {
+    const hay = ((a.name || '') + ' ' + (a.repo || '')).toLowerCase();
+    if (q && !hay.includes(q)) return;
+    shown++;
+    const tr = document.createElement('tr');
+    if (a._new) tr.className = 'new';
+    tr.innerHTML =
+      '<td class="mut">' + (idx + 1) + '</td>' +
+      '<td style="min-width:120px"><input type="text" data-i="' + idx + '" data-k="name" value="' + esc(a.name) + '"></td>' +
+      '<td style="min-width:140px"><input type="text" data-i="' + idx + '" data-k="nacp_name" value="' + esc((a.nacp_name || []).join(', ')) + '"></td>' +
+      '<td style="min-width:150px"><input type="text" data-i="' + idx + '" data-k="repo" value="' + esc(a.repo) + '"></td>' +
+      '<td class="links"><a href="' + ghRepo(a.repo) + '" target="_blank" rel="noopener">repo</a><a href="' + ghRel(a.repo) + '" target="_blank" rel="noopener">rel</a></td>' +
+      '<td style="min-width:110px"><input type="text" data-i="' + idx + '" data-k="asset" value="' + esc(a.asset) + '"></td>' +
+      '<td>' + kindSelect(idx, a.asset_kind, 'asset_kind') + '</td>' +
+      '<td style="min-width:190px"><input type="text" data-i="' + idx + '" data-k="default_path" value="' + esc(a.default_path) + '"></td>' +
+      '<td style="text-align:center"><input type="checkbox" data-i="' + idx + '" data-k="prerelease"' + (a.prerelease ? ' checked' : '') + '></td>' +
+      '<td class="status" data-cstatus="' + idx + '"><button class="btn alt sm" data-ccheck="' + idx + '">check</button></td>' +
+      '<td><button class="btn del sm" data-del="' + idx + '">✕</button></td>';
+    tb.appendChild(tr);
+  });
+  $('catCount').textContent = shown + ' / ' + apps.length + ' apps';
+  $('catEmpty').style.display = apps.length ? 'none' : '';
+  $('tabCat').textContent = 'Catalog (' + apps.length + ')';
+  wireCatalog();
+}
+
+function wireCatalog() {
+  const tb = $('catRows');
+  tb.querySelectorAll('input[type=text]').forEach(inp => inp.addEventListener('input', () => {
+    const i = +inp.dataset.i, k = inp.dataset.k;
+    if (k === 'nacp_name') apps[i].nacp_name = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+    else apps[i][k] = inp.value;
+    inp.parentElement.classList.add('dirty');
+    if (k === 'repo') { const l = inp.closest('tr').querySelectorAll('.links a'); l[0].href = ghRepo(inp.value); l[1].href = ghRel(inp.value); }
+  }));
+  tb.querySelectorAll('select[data-k=asset_kind]').forEach(s => s.addEventListener('change', () => apps[+s.dataset.i].asset_kind = s.value));
+  tb.querySelectorAll('input[type=checkbox][data-k=prerelease]').forEach(c => c.addEventListener('change', () => apps[+c.dataset.i].prerelease = c.checked));
+  tb.querySelectorAll('[data-ccheck]').forEach(b => b.addEventListener('click', () => checkInto(apps[+b.dataset.ccheck].repo, document.querySelector('[data-cstatus="' + b.dataset.ccheck + '"]'))));
+  tb.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    const i = +b.dataset.del;
+    if (confirm('Delete "' + (apps[i].name || apps[i].repo || 'this entry') + '"?')) { apps.splice(i, 1); renderCatalog(); }
+  }));
+}
+
+$('addApp').addEventListener('click', () => {
+  $('search').value = '';
+  const a = blankApp(); a._new = true; apps.unshift(a);
+  renderCatalog();
+  const f = $('catRows').querySelector('input[data-k=name]'); if (f) f.focus();
+});
+$('search').addEventListener('input', renderCatalog);
+
+$('download').addEventListener('click', () => {
+  const clean = apps.map(a => { const c = Object.assign({}, a); delete c._new; return c; });
+  const out = JSON.stringify({ apps: clean }, null, 2) + '\n';
+  const blob = new Blob([out], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'known_repos.json'; a.click();
+});
+
+/* ---- unmatched ---- */
+$('ufile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { unmatched = parseUnmatched(r.result); renderUnmatched(); };
+  r.readAsText(f);
+});
+
+function parseUnmatched(text) {
+  const out = [];
+  text.split(/\r?\n/).forEach(line => {
+    if (!line || line[0] === '#') return;
+    const p = line.split('\t');
+    if (p.length < 3) return;
+    const name = p[0].trim(), version = p[1].trim(), path = p[2].trim();
+    if (!name && !path) return;
+    const base = (path.split('/').pop() || '');
+    out.push({ name, nacp_name: name ? [name] : [], repo: '', asset: base,
+               asset_kind: 'nro', tag_example: version, prerelease: false,
+               author: '', category: '', default_path: path, _ver: version, _promoted: false });
+  });
+  return out;
+}
+
+function renderUnmatched() {
+  const tb = $('unmRows'); tb.innerHTML = '';
+  unmatched.forEach((u, idx) => {
+    const tr = document.createElement('tr');
+    if (u._promoted) tr.className = 'promoted';
+    tr.innerHTML =
+      '<td class="mut">' + (idx + 1) + '</td>' +
+      '<td style="min-width:140px"><input type="text" data-i="' + idx + '" data-k="name" value="' + esc(u.name) + '"></td>' +
+      '<td style="min-width:160px"><input type="text" data-i="' + idx + '" data-k="repo" value="' + esc(u.repo) + '" placeholder="owner/name"></td>' +
+      '<td class="links"><a href="' + ghRepo(u.repo) + '" target="_blank" rel="noopener">repo</a><a href="https://github.com/search?q=' + encodeURIComponent(u.name) + '&type=repositories" target="_blank" rel="noopener">search</a></td>' +
+      '<td style="min-width:120px"><input type="text" data-i="' + idx + '" data-k="asset" value="' + esc(u.asset) + '"></td>' +
+      '<td>' + kindSelect(idx, u.asset_kind, 'asset_kind') + '</td>' +
+      '<td style="min-width:190px"><input type="text" data-i="' + idx + '" data-k="default_path" value="' + esc(u.default_path) + '"></td>' +
+      '<td class="mut">' + esc(u._ver) + '</td>' +
+      '<td class="status" data-ustatus="' + idx + '"><button class="btn alt sm" data-ucheck="' + idx + '">check</button></td>' +
+      '<td><button class="btn promote sm" data-promote="' + idx + '"' + (u._promoted ? ' disabled' : '') + '>' + (u._promoted ? '✓ added' : '↑ Promote') + '</button></td>';
+    tb.appendChild(tr);
+  });
+  const left = unmatched.filter(u => !u._promoted).length;
+  $('unmCount').textContent = unmatched.length + ' found · ' + left + ' to triage';
+  $('unmEmpty').style.display = unmatched.length ? 'none' : '';
+  $('tabUnm').textContent = 'Unmatched (' + left + ')';
+  wireUnmatched();
+}
+
+function wireUnmatched() {
+  const tb = $('unmRows');
+  tb.querySelectorAll('input[type=text]').forEach(inp => inp.addEventListener('input', () => {
+    const i = +inp.dataset.i, k = inp.dataset.k;
+    if (k === 'name') { unmatched[i].name = inp.value; unmatched[i].nacp_name = inp.value ? [inp.value] : []; }
+    else unmatched[i][k] = inp.value;
+    if (k === 'repo') { const l = inp.closest('tr').querySelector('.links a'); if (l) l.href = ghRepo(inp.value); }
+  }));
+  tb.querySelectorAll('select[data-k=asset_kind]').forEach(s => s.addEventListener('change', () => unmatched[+s.dataset.i].asset_kind = s.value));
+  tb.querySelectorAll('[data-ucheck]').forEach(b => b.addEventListener('click', () => checkInto(unmatched[+b.dataset.ucheck].repo, document.querySelector('[data-ustatus="' + b.dataset.ucheck + '"]'))));
+  tb.querySelectorAll('[data-promote]').forEach(b => b.addEventListener('click', () => promote(+b.dataset.promote)));
+}
+
+function promote(i) {
+  const u = unmatched[i];
+  if (u._promoted) return;
+  if (!u.repo) { if (!confirm('No repo set — promote anyway? (it will not be updatable until you add one)')) return; }
+  apps.unshift({ name: u.name, nacp_name: (u.nacp_name || []).slice(), repo: u.repo,
+                 asset: u.asset, asset_kind: u.asset_kind, tag_example: u.tag_example,
+                 prerelease: u.prerelease, author: u.author, category: u.category,
+                 default_path: u.default_path, _new: true });
+  u._promoted = true;
+  renderUnmatched();
+  renderCatalog();
+}
+
+/* ---- shared GitHub check ---- */
+async function checkInto(repo, cell) {
+  if (!repo) { cell.innerHTML = '<span class="mut">no repo</span>'; return; }
+  cell.innerHTML = '<span class="mut">checking…</span>';
+  try {
+    const res = await fetch('https://api.github.com/repos/' + repo + '/releases?per_page=5', { headers: ghHeaders() });
+    if (res.status === 200) {
+      const rels = await res.json();
+      let assets = [], tag = '';
+      for (const r of rels) { if (!r.draft) { assets = (r.assets || []).map(x => x.name); tag = r.tag_name; break; } }
+      cell.innerHTML = '<span class="ok">200</span> <span class="mut">' + esc(tag) + '</span><div class="mut" style="font-size:11px;font-weight:400">' + esc(assets.join(', ').slice(0, 140)) + '</div>';
+    } else if (res.status === 404) { cell.innerHTML = '<span class="bad">404 not found</span>'; }
+    else if (res.status === 403) { cell.innerHTML = '<span class="warn">403 rate-limited</span>'; }
+    else { cell.innerHTML = '<span class="warn">' + res.status + '</span>'; }
+  } catch (err) { cell.innerHTML = '<span class="bad">network err</span>'; }
+}
+
+$('checkAll').addEventListener('click', async () => {
+  const btns = [...$('catRows').querySelectorAll('[data-ccheck]')];
+  for (const b of btns) { await checkInto(apps[+b.dataset.ccheck].repo, document.querySelector('[data-cstatus="' + b.dataset.ccheck + '"]')); await new Promise(r => setTimeout(r, 350)); }
+});
+</script>
+</body>
+</html>

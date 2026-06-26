@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 static void sset(char *dst, size_t dsz, const char *src) {
     if (dsz == 0) {
@@ -70,6 +71,19 @@ void apps_load(AppsConfig *cfg) {
                           sizeof(a->path));
                 json_copy(js, tok, json_obj_get(js, tok, child, "version"),
                           a->version, sizeof(a->version));
+                json_copy(js, tok, json_obj_get(js, tok, child, "latest"),
+                          a->latest, sizeof(a->latest));
+                json_copy(js, tok, json_obj_get(js, tok, child, "checked"),
+                          a->checked, sizeof(a->checked));
+                json_copy(js, tok, json_obj_get(js, tok, child, "asset"),
+                          a->asset, sizeof(a->asset));
+                json_copy(js, tok, json_obj_get(js, tok, child, "kind"),
+                          a->kind, sizeof(a->kind));
+                a->prerelease = json_bool(
+                    js, tok, json_obj_get(js, tok, child, "prerelease"));
+                if (!a->kind[0]) {
+                    sset(a->kind, sizeof(a->kind), "nro");
+                }
                 if (a->repo[0] && a->path[0]) {
                     if (!a->name[0]) {
                         sset(a->name, sizeof(a->name), a->repo);
@@ -102,6 +116,16 @@ bool apps_save(const AppsConfig *cfg) {
         json_write_escaped(f, a->path);
         fputs(", \"version\": ", f);
         json_write_escaped(f, a->version);
+        fputs(", \"latest\": ", f);
+        json_write_escaped(f, a->latest);
+        fputs(", \"checked\": ", f);
+        json_write_escaped(f, a->checked);
+        fputs(", \"asset\": ", f);
+        json_write_escaped(f, a->asset);
+        fputs(", \"kind\": ", f);
+        json_write_escaped(f, a->kind);
+        fputs(a->prerelease ? ", \"prerelease\": true" : ", \"prerelease\": false",
+              f);
         fputs(" }", f);
         fputs(i + 1 < cfg->count ? ",\n" : "\n", f);
     }
@@ -111,7 +135,8 @@ bool apps_save(const AppsConfig *cfg) {
 }
 
 App *apps_add(AppsConfig *cfg, const char *name, const char *repo,
-              const char *path) {
+              const char *path, const char *asset, const char *kind,
+              bool prerelease) {
     if (!repo || !repo[0] || !path || !path[0] || cfg->count >= MAX_APPS) {
         return NULL;
     }
@@ -120,6 +145,9 @@ App *apps_add(AppsConfig *cfg, const char *name, const char *repo,
     sset(a->name, sizeof(a->name), (name && name[0]) ? name : repo);
     sset(a->repo, sizeof(a->repo), repo);
     sset(a->path, sizeof(a->path), path);
+    sset(a->asset, sizeof(a->asset), asset);
+    sset(a->kind, sizeof(a->kind), (kind && kind[0]) ? kind : "nro");
+    a->prerelease = prerelease;
     return a;
 }
 
@@ -132,4 +160,90 @@ bool apps_remove(AppsConfig *cfg, int idx) {
     }
     cfg->count--;
     return true;
+}
+
+int apps_find(const AppsConfig *cfg, const char *repo) {
+    if (!repo || !repo[0]) {
+        return -1;
+    }
+    for (int i = 0; i < cfg->count; i++) {
+        if (strcasecmp(cfg->apps[i].repo, repo) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* ---- excludes (opt-out list) -------------------------------------------- */
+void excludes_load(Excludes *ex) {
+    memset(ex, 0, sizeof(*ex));
+    size_t len = 0;
+    char *js = json_read_file(EXCLUDES_PATH, &len);
+    if (!js) {
+        return;
+    }
+    int ntok = 0;
+    jsmntok_t *tok = json_parse_alloc(js, len, &ntok);
+    if (tok && tok[0].type == JSMN_OBJECT) {
+        int ai = json_obj_get(js, tok, 0, "excluded");
+        if (ai >= 0 && tok[ai].type == JSMN_ARRAY) {
+            int count = tok[ai].size;
+            int child = ai + 1;
+            for (int i = 0; i < count && ex->count < MAX_APPS; i++) {
+                json_copy(js, tok, child, ex->repos[ex->count],
+                          sizeof(ex->repos[0]));
+                if (ex->repos[ex->count][0]) {
+                    ex->count++;
+                }
+                child = json_tok_skip(tok, child);
+            }
+        }
+    }
+    free(tok);
+    free(js);
+}
+
+bool excludes_save(const Excludes *ex) {
+    fs_mkdir_p(CONFIG_DIR);
+    FILE *f = fopen(EXCLUDES_PATH, "wb");
+    if (!f) {
+        return false;
+    }
+    fputs("{\n  \"excluded\": [\n", f);
+    for (int i = 0; i < ex->count; i++) {
+        fputs("    ", f);
+        json_write_escaped(f, ex->repos[i]);
+        fputs(i + 1 < ex->count ? ",\n" : "\n", f);
+    }
+    fputs("  ]\n}\n", f);
+    fclose(f);
+    return true;
+}
+
+bool excludes_contains(const Excludes *ex, const char *repo) {
+    for (int i = 0; i < ex->count; i++) {
+        if (strcasecmp(ex->repos[i], repo) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void excludes_add(Excludes *ex, const char *repo) {
+    if (!repo || !repo[0] || ex->count >= MAX_APPS ||
+        excludes_contains(ex, repo)) {
+        return;
+    }
+    sset(ex->repos[ex->count], sizeof(ex->repos[0]), repo);
+    ex->count++;
+}
+
+void excludes_remove_at(Excludes *ex, int idx) {
+    if (idx < 0 || idx >= ex->count) {
+        return;
+    }
+    for (int i = idx; i < ex->count - 1; i++) {
+        memcpy(ex->repos[i], ex->repos[i + 1], sizeof(ex->repos[0]));
+    }
+    ex->count--;
 }

@@ -13,6 +13,11 @@ extern "C" {
 bool net_init(void);
 void net_exit(void);
 
+/* Set (or clear, with NULL/"") a GitHub token. When set, an
+ * "Authorization: Bearer <token>" header is added to every request, raising the
+ * API rate limit from 60/hr to 5000/hr. The token is never logged. */
+void net_set_auth(const char *token);
+
 /* Progress callback: return non-zero to abort the transfer. */
 typedef int (*net_progress_cb)(void *userdata, uint64_t now, uint64_t total);
 

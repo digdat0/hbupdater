@@ -125,6 +125,11 @@ static bool copy_file(const char *src, const char *dst) {
     return ok;
 }
 
+bool fs_copy(const char *src, const char *dst) {
+    fs_ensure_parent(dst);
+    return copy_file(src, dst);
+}
+
 bool fs_move(const char *src, const char *dst) {
     fs_ensure_parent(dst);
     if (fs_exists(dst)) {

@@ -3,6 +3,7 @@
 #include "jsonutil.h"
 
 #include <switch.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,11 +34,36 @@ int version_cmp(const char *a, const char *b) {
     return 0;
 }
 
-/* Find the .nro asset's download URL on one release object (token index `rel`).
- * Writes into out (empty if none). */
-static void asset_nro_url(const char *body, const jsmntok_t *tok, int rel,
-                          char *out, size_t out_sz) {
+/* Case-insensitive glob match supporting '*' and '?'. */
+static bool wmatch(const char *p, const char *s) {
+    if (!*p) {
+        return !*s;
+    }
+    if (*p == '*') {
+        return wmatch(p + 1, s) || (*s && wmatch(p, s + 1));
+    }
+    if (*p == '?') {
+        return *s && wmatch(p + 1, s + 1);
+    }
+    return *s &&
+           tolower((unsigned char)*p) == tolower((unsigned char)*s) &&
+           wmatch(p + 1, s + 1);
+}
+
+/* Pick the download URL (and byte size) of the asset matching `pat` on one
+ * release object (token index `rel`). Falls back to the first asset sharing the
+ * glob's file extension. Writes into out (empty if none). */
+static void pick_asset_url(const char *body, const jsmntok_t *tok, int rel,
+                           const char *pat, char *out, size_t out_sz,
+                           uint64_t *out_size) {
     out[0] = '\0';
+    if (out_size) {
+        *out_size = 0;
+    }
+    char fallback[1024] = "";
+    uint64_t fallback_size = 0;
+    const char *ext = strrchr(pat, '.'); /* ".nro" / ".ovl" / NULL */
+
     int ai = json_obj_get(body, tok, rel, "assets");
     if (ai < 0 || tok[ai].type != JSMN_ARRAY) {
         return;
@@ -49,22 +75,50 @@ static void asset_nro_url(const char *body, const jsmntok_t *tok, int rel,
             char name[256];
             json_copy(body, tok, json_obj_get(body, tok, child, "name"), name,
                       sizeof(name));
-            size_t ln = strlen(name);
-            if (ln > 4 && strcasecmp(name + ln - 4, ".nro") == 0) {
-                json_copy(body, tok,
-                          json_obj_get(body, tok, child, "browser_download_url"),
-                          out, out_sz);
-                return;
+            if (name[0]) {
+                if (wmatch(pat, name)) {
+                    json_copy(body, tok,
+                              json_obj_get(body, tok, child,
+                                           "browser_download_url"),
+                              out, out_sz);
+                    if (out_size) {
+                        *out_size = json_u64(
+                            body, tok, json_obj_get(body, tok, child, "size"));
+                    }
+                    return; /* exact glob match wins */
+                }
+                if (ext && !fallback[0]) {
+                    size_t ln = strlen(name), el = strlen(ext);
+                    if (ln >= el && strcasecmp(name + ln - el, ext) == 0) {
+                        json_copy(body, tok,
+                                  json_obj_get(body, tok, child,
+                                               "browser_download_url"),
+                                  fallback, sizeof(fallback));
+                        fallback_size = json_u64(
+                            body, tok, json_obj_get(body, tok, child, "size"));
+                    }
+                }
             }
         }
         child = json_tok_skip(tok, child);
     }
+    if (fallback[0]) {
+        snprintf(out, out_sz, "%s", fallback);
+        if (out_size) {
+            *out_size = fallback_size;
+        }
+    }
 }
 
-bool update_fetch_latest(const char *repo, char *tag, size_t tag_sz, char *url,
-                         size_t url_sz) {
+bool update_fetch_latest(const char *repo, const char *asset_pat,
+                         bool allow_prerelease, char *tag, size_t tag_sz,
+                         char *url, size_t url_sz, uint64_t *asset_size) {
     tag[0] = '\0';
     url[0] = '\0';
+    if (asset_size) {
+        *asset_size = 0;
+    }
+    const char *pat = (asset_pat && asset_pat[0]) ? asset_pat : "*.nro";
 
     /* Use the releases *list*, not /releases/latest: the latter has been seen
      * returning intermittent 504s, and it relies on GitHub's "latest" flag
@@ -81,11 +135,21 @@ bool update_fetch_latest(const char *repo, char *tag, size_t tag_sz, char *url,
     for (int attempt = 0; attempt < 3; attempt++) {
         body = http_get(api, &code, &len);
         if (body && code == 200 && len >= 2) {
-            break;
+            break; /* success */
         }
+        /* Only transport errors and 5xx are worth retrying. A 4xx is definitive:
+         * 404 (not found) and 403 (rate-limited / abuse) will never change on
+         * retry, and re-firing them just burns GitHub's 60/hr limit ~3x faster.
+         * Stop immediately so one bad/rate-limited repo costs one request. */
+        bool retryable = (!body) || (code == 0) || (code >= 500);
         free(body);
         body = NULL;
-        svcSleepThread(700000000ULL); /* ~0.7s before retrying */
+        if (!retryable) {
+            break;
+        }
+        if (attempt < 2) {
+            svcSleepThread(700000000ULL); /* ~0.7s before retrying */
+        }
     }
     if (!body) {
         return false;
@@ -101,6 +165,7 @@ bool update_fetch_latest(const char *repo, char *tag, size_t tag_sz, char *url,
 
     char best_tag[64] = "";
     char best_url[1024] = "";
+    uint64_t best_size = 0;
     int nrel = tok[0].size;
     int rel = 1;
     for (int r = 0; r < nrel; r++) {
@@ -108,20 +173,24 @@ bool update_fetch_latest(const char *repo, char *tag, size_t tag_sz, char *url,
             rel = json_tok_skip(tok, rel);
             continue;
         }
-        bool skip =
-            json_bool(body, tok, json_obj_get(body, tok, rel, "draft")) ||
+        bool draft =
+            json_bool(body, tok, json_obj_get(body, tok, rel, "draft"));
+        bool pre =
             json_bool(body, tok, json_obj_get(body, tok, rel, "prerelease"));
+        bool skip = draft || (pre && !allow_prerelease);
         char rtag[64] = "";
         char rurl[1024] = "";
+        uint64_t rsize = 0;
         if (!skip) {
             json_copy(body, tok, json_obj_get(body, tok, rel, "tag_name"), rtag,
                       sizeof(rtag));
-            asset_nro_url(body, tok, rel, rurl, sizeof(rurl));
+            pick_asset_url(body, tok, rel, pat, rurl, sizeof(rurl), &rsize);
         }
         if (!skip && rtag[0] && rurl[0] &&
             (!best_tag[0] || version_cmp(rtag, best_tag) > 0)) {
             snprintf(best_tag, sizeof(best_tag), "%s", rtag);
             snprintf(best_url, sizeof(best_url), "%s", rurl);
+            best_size = rsize;
         }
         rel = json_tok_skip(tok, rel);
     }
@@ -134,5 +203,8 @@ bool update_fetch_latest(const char *repo, char *tag, size_t tag_sz, char *url,
     }
     snprintf(tag, tag_sz, "%s", best_tag);
     snprintf(url, url_sz, "%s", best_url);
+    if (asset_size) {
+        *asset_size = best_size;
+    }
     return true;
 }

@@ -23,8 +23,14 @@ class MainLayout : public pu::ui::Layout {
     void SetStatus(const std::string &t);
     void SetFooter(const std::string &t);
     void ClearList();
+    void SetColumns(const std::string &a, const std::string &b,
+                    const std::string &c);
+    void ClearColumns();
     void AddRow(const std::string &left, const std::string &right,
                 pu::ui::Color lclr, pu::ui::Color rclr);
+    void AddRow3(const std::string &name, const std::string &ver,
+                 const std::string &status, pu::ui::Color nclr,
+                 pu::ui::Color vclr, pu::ui::Color sclr);
     s32 Sel();
     void SetSel(s32 i);
     s32 Count();
@@ -45,10 +51,34 @@ class MainApplication : public pu::ui::Application {
     void ToastErr(const std::string &msg);
     bool Confirm(const std::string &title, const std::string &msg);
 
-    void Refresh();              // rebuild the list from the loaded config
-    void CheckOne(int idx);      // query GitHub for one app's latest release
-    void CheckAll();
-    bool UpdateOne(int idx);     // download + install if an update is available
-    void AddApp();
+    void Refresh();              // rebuild the tracked-app list from the config
+    void CheckAll();             // start a background check of every app
+    void StartCheck(int idx, bool offer_update); // background check of one app
+    void Tick();                 // per-frame: poll the worker, drive completion
+
+    void OpenCatalog();          // Settings -> Supported apps (read-only browse)
+    void CloseCatalog();         // back to Settings
+    void RefreshCatalog();       // rebuild the supported-apps list
+
+    void ReconcileInstalled();   // opt-out: rebuild home from installed apps
+
+    void OpenExcluded();         // settings -> excluded-apps manager
+    void RefreshExcluded();      // rebuild the excluded list
+    void Unexclude();            // restore the selected excluded app
+
+    void OpenSettings();         // enter the settings/toggles screen
+    void RefreshSettings();      // rebuild the settings list view
+    void ToggleSetting();        // flip the selected setting + save
+
+    void OpenLogs();             // settings -> log picker
+    void RefreshLogMenu();       // rebuild the log-picker list
+    void OpenLog(int idx);       // display one log file's contents
+
+    void OpenBackups(int appidx); // manage an app's backup snapshots
+    void RefreshBackups();        // rebuild the backup list
+    void RevertBackup();          // restore the selected snapshot
+    void DeleteBackup();          // delete the selected snapshot
+    void ClearBackups();          // delete all snapshots for the app
+
     void HandleInput(u64 down, u64 held);
 };

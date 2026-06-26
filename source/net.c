@@ -9,9 +9,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define USER_AGENT "TicoDL+/0.1 (libnx)"
+#define USER_AGENT "HBUpdater (libnx)"
 
 static bool g_ready = false;
+
+/* "Authorization: Bearer <token>" when a GitHub token is configured, else "".
+ * Deliberately NOT included in net_log output so it never leaks to debug.log. */
+static char g_auth[320] = "";
+
+void net_set_auth(const char *token) {
+    if (token && token[0]) {
+        snprintf(g_auth, sizeof(g_auth), "Authorization: Bearer %s", token);
+    } else {
+        g_auth[0] = '\0';
+    }
+}
 
 /* Append a line to the debug log so failures are diagnosable on-device. */
 static void net_log(const char *fmt, ...) {
@@ -97,6 +109,11 @@ char *http_get(const char *url, long *http_code, size_t *out_len) {
         m.data[0] = '\0';
     }
 
+    struct curl_slist *hdrs = NULL;
+    if (g_auth[0]) {
+        hdrs = curl_slist_append(hdrs, g_auth);
+    }
+
     curl_easy_setopt(c, CURLOPT_URL, url);
     curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(c, CURLOPT_USERAGENT, USER_AGENT);
@@ -104,6 +121,9 @@ char *http_get(const char *url, long *http_code, size_t *out_len) {
     curl_easy_setopt(c, CURLOPT_WRITEDATA, &m);
     curl_easy_setopt(c, CURLOPT_TIMEOUT, 60L);
     curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 20L);
+    if (hdrs) {
+        curl_easy_setopt(c, CURLOPT_HTTPHEADER, hdrs);
+    }
     apply_tls(c);
 
     CURLcode rc = curl_easy_perform(c);
@@ -111,6 +131,9 @@ char *http_get(const char *url, long *http_code, size_t *out_len) {
     curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &code);
     if (http_code) {
         *http_code = code;
+    }
+    if (hdrs) {
+        curl_slist_free_all(hdrs);
     }
     curl_easy_cleanup(c);
 
@@ -178,6 +201,9 @@ bool http_download(const char *url, const char *dest_path,
     struct curl_slist *hdrs = NULL;
     if (extra_header && extra_header[0]) {
         hdrs = curl_slist_append(hdrs, extra_header);
+    }
+    if (g_auth[0]) {
+        hdrs = curl_slist_append(hdrs, g_auth);
     }
 
     curl_easy_setopt(c, CURLOPT_URL, url);
