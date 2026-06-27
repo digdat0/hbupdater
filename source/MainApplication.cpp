@@ -272,11 +272,10 @@ static void apply_version_state(int idx, const char *tag) {
     bool uptodate = inst[0] && (c > 0 || (c == 0 && strcmp(inst, tag) == 0));
     if (uptodate) {
         g_state[idx] = 1;
-        g_status[idx] = std::string("up to date ") + tag;
+        g_status[idx] = std::string("up to date");
     } else {
         g_state[idx] = 2;
-        g_status[idx] = (inst[0] ? std::string(inst) + " -> " : std::string()) +
-                        tag;
+        g_status[idx] = std::string("-> ") + tag;
     }
 }
 
@@ -902,11 +901,14 @@ void MainApplication::Refresh() {
                           sc);
     }
     if (g_filt_map.empty()) {
-        g_layout->AddRow3(
-            g_filter.empty()
-                ? "(no recognized apps - update catalog in settings)"
-                : "(no matches)",
-            "", "", dim_clr, dim_clr, dim_clr);
+        if (g_filter.empty()) {
+            g_layout->AddRow3("(no recognized apps)", "", "", dim_clr, dim_clr,
+                              dim_clr);
+            g_layout->AddRow3("Press R for settings -> update catalog",
+                              "", "", dim_clr, dim_clr, dim_clr);
+        } else {
+            g_layout->AddRow3("(no matches)", "", "", dim_clr, dim_clr, dim_clr);
+        }
     }
     g_layout->SetSel(keep);
 }
@@ -987,6 +989,10 @@ void MainApplication::Tick() {
                      g_check_total);
             g_layout->SetTitle(s); // prominent: it's clearly progressing
             g_layout->SetStatus("");
+        } else if (g_job == JOB_CHECK_ONE && g_job_idx >= 0 &&
+                   g_job_idx < g_cfg.count) {
+            g_layout->SetStatus(std::string("checking ") +
+                                g_cfg.apps[g_job_idx].name + "...");
         } else {
             g_layout->SetStatus("checking...");
         }
@@ -1294,7 +1300,7 @@ static bool *advanced_ptr(int i) {
 }
 
 // Settings main: action-only rows (no toggles on the main screen anymore)
-#define SETTINGS_ACTION_COUNT 8
+#define SETTINGS_ACTION_COUNT 9
 
 void MainApplication::OpenSettings() {
     g_list_sel = g_layout->Sel();
@@ -1326,6 +1332,10 @@ void MainApplication::RefreshSettings() {
     g_layout->AddRow3("File install", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Advanced", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Add repo manually", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("GitHub token", g_settings.github_token[0] ? "set" : "none",
+                      ">", name_clr, dim_clr,
+                      g_settings.github_token[0]
+                          ? pu::ui::Color(130, 225, 150, 255) : dim_clr);
     g_layout->SetSel(keep);
 }
 
@@ -1984,7 +1994,8 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                         this->ToastErr("Invalid format (need owner/repo)");
                     } else if (apps_find(&g_cfg, repo) >= 0) {
                         this->ToastErr("Already tracked");
-                    } else {
+                    } else if (this->Confirm("Add repo",
+                                   std::string("Track ") + repo + "?")) {
                         char path[256];
                         const char *base = strrchr(repo, '/');
                         base = base ? base + 1 : repo;
@@ -1998,6 +2009,18 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                         }
                         this->RefreshSettings();
                     }
+                }
+            } else if (sel == 8) {
+                char tok[256] = {0};
+                if (show_keyboard("GitHub token",
+                                  "Paste personal access token (empty to clear)",
+                                  g_settings.github_token, tok, sizeof(tok))) {
+                    snprintf(g_settings.github_token,
+                             sizeof(g_settings.github_token), "%s", tok);
+                    settings_save(&g_settings);
+                    net_set_auth(g_settings.github_token);
+                    this->RefreshSettings();
+                    this->Toast(tok[0] ? "Token saved" : "Token cleared");
                 }
             }
         }
@@ -2103,6 +2126,14 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     }
 
     // ---- home ("My Apps") mode ----
+    if (down & HidNpadButton_B) {
+        if (!g_filter.empty()) {
+            g_filter.clear();
+            g_layout->SetSel(0);
+            this->Refresh();
+        }
+        return;
+    }
     if (down & HidNpadButton_Plus) {
         this->Close();
         return;
