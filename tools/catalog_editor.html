@@ -58,6 +58,7 @@
     <h1>HBUpdater catalog editor</h1>
     <button class="tab active" id="tabCat">Catalog</button>
     <button class="tab" id="tabUnm">Unmatched</button>
+    <button class="tab" id="tabPush">Push</button>
     <input type="password" id="token" placeholder="GitHub token (optional → 5000/hr checks)"
            style="margin-left:auto;min-width:280px;padding:6px 10px;border-radius:6px;border:1px solid #2a2f3a;background:#0f1115;color:#e6e9ef;font-size:12px;font-family:ui-monospace,Consolas,monospace">
     <span class="count" id="tokState"></span>
@@ -97,6 +98,30 @@
     <tbody id="catRows"></tbody>
   </table>
   <div class="empty" id="catEmpty">Load a known_repos.json file, or press <b>+ Add app</b>.</div>
+</section>
+
+<!-- Push toolbar -->
+<div class="toolbar hidden" id="pushBar">
+  <input type="file" id="pfile" accept=".json,application/json">
+  <span class="count" id="pushCount"></span>
+  <button class="btn" id="copyCmd">Copy push command</button>
+  <button class="btn add" id="pushBtn" disabled>Push catalog to git</button>
+  <span class="count" id="pushStatus"></span>
+</div>
+
+<!-- Push section -->
+<section id="pushSection" class="hidden">
+  <div class="help">
+    Load your <code>known_repos.json</code>, preview it, then push to git.
+    The push command runs: <code>git add romfs/known_repos.json && git commit && git push origin main</code> as <b>digdat0</b>.<br>
+    <b>Note:</b> Browsers cannot run git directly. Use <b>Copy push command</b> to paste into a terminal, or double-click
+    <code>tools/push_catalog.bat</code> from the repo.
+  </div>
+  <div style="padding:18px">
+    <div id="pushPreview" style="background:#11151c;border:1px solid #2a2f3a;border-radius:6px;padding:14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;max-height:500px;overflow:auto;white-space:pre-wrap;color:#9aa3b2">
+      No file loaded.
+    </div>
+  </div>
 </section>
 
 <!-- Unmatched table -->
@@ -153,17 +178,18 @@ function kindSelect(idx, kind, k) {
 }
 
 /* ---- tabs ---- */
+const allTabs = ['cat', 'unm', 'push'];
 function showTab(which) {
-  const cat = which === 'cat';
-  $('tabCat').classList.toggle('active', cat);
-  $('tabUnm').classList.toggle('active', !cat);
-  $('catBar').classList.toggle('hidden', !cat);
-  $('unmBar').classList.toggle('hidden', cat);
-  $('catSection').classList.toggle('hidden', !cat);
-  $('unmSection').classList.toggle('hidden', cat);
+  allTabs.forEach(t => {
+    const active = t === which;
+    $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('active', active);
+    const bar = $(t + 'Bar'); if (bar) bar.classList.toggle('hidden', !active);
+    const sec = $(t + 'Section'); if (sec) sec.classList.toggle('hidden', !active);
+  });
 }
 $('tabCat').addEventListener('click', () => showTab('cat'));
 $('tabUnm').addEventListener('click', () => showTab('unm'));
+$('tabPush').addEventListener('click', () => showTab('push'));
 
 /* ---- catalog ---- */
 $('file').addEventListener('change', e => {
@@ -339,6 +365,41 @@ async function checkInto(repo, cell) {
 $('checkAll').addEventListener('click', async () => {
   const btns = [...$('catRows').querySelectorAll('[data-ccheck]')];
   for (const b of btns) { await checkInto(apps[+b.dataset.ccheck].repo, document.querySelector('[data-cstatus="' + b.dataset.ccheck + '"]')); await new Promise(r => setTimeout(r, 350)); }
+});
+
+/* ---- push tab ---- */
+const PUSH_CMD = 'cd /c/hbupdater && git add romfs/known_repos.json && git -c user.name="digdat0" -c user.email="digdat0@users.noreply.github.com" commit -m "Update catalog" && git push origin main';
+let pushJson = null;
+
+$('pfile').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const j = JSON.parse(r.result);
+      const arr = Array.isArray(j) ? j : (j.apps || []);
+      pushJson = r.result;
+      $('pushCount').textContent = arr.length + ' apps loaded from ' + f.name;
+      $('pushPreview').textContent = pushJson.slice(0, 8000) + (pushJson.length > 8000 ? '\n\n... (' + pushJson.length + ' chars total)' : '');
+      $('pushBtn').disabled = false;
+      $('pushStatus').textContent = '';
+    } catch (err) { alert('Could not parse JSON: ' + err.message); }
+  };
+  r.readAsText(f);
+});
+
+$('copyCmd').addEventListener('click', () => {
+  navigator.clipboard.writeText(PUSH_CMD).then(() => {
+    $('pushStatus').textContent = 'Copied to clipboard!';
+    $('pushStatus').style.color = '#86e29a';
+    setTimeout(() => { $('pushStatus').textContent = ''; }, 3000);
+  });
+});
+
+$('pushBtn').addEventListener('click', () => {
+  if (!pushJson) return;
+  $('pushStatus').textContent = 'Browsers cannot run git directly. Use the copied command or double-click tools/push_catalog.bat';
+  $('pushStatus').style.color = '#f0c674';
 });
 </script>
 </body>

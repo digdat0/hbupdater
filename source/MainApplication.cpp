@@ -828,7 +828,7 @@ void MainApplication::Refresh() {
                  g_cfg.count == 1 ? "" : "s");
     }
     g_layout->SetStatus(st);
-    g_layout->SetFooter("A open  X check all  L rescan  R settings  "
+    g_layout->SetFooter("A open  X check all  R settings  "
                         "- exclude  ZL/ZR page  + exit");
     g_layout->SetColumns("Name", "Installed", "Update");
 
@@ -847,7 +847,7 @@ void MainApplication::Refresh() {
                           state_color(g_state[i]));
     }
     if (g_cfg.count == 0) {
-        g_layout->AddRow3("(no recognized apps installed - press L to rescan)",
+        g_layout->AddRow3("(no recognized apps - update catalog in settings)",
                           "", "", dim_clr, dim_clr, dim_clr);
     }
     g_layout->SetSel(keep);
@@ -879,18 +879,18 @@ void MainApplication::Tick() {
         this->Toast(g_pending_toast);
         g_pending_toast.clear();
     }
-    // One-shot launch action (runs inside the render loop so dialogs are safe).
     if (g_launch_action && !g_busy) {
         int a = g_launch_action;
         g_launch_action = 0;
         if (a == 1) {
-            if (this->Confirm("Welcome",
-                              "Scan your SD card for installed apps now?\n"
-                              "(you can rescan any time with L)")) {
-                this->ReconcileInstalled();
+            if (g_cfg.count > 0 &&
+                this->Confirm("Welcome",
+                              "Check your installed apps for updates now?")) {
+                this->CheckAll();
             }
         } else if (a == 2) {
-            this->ReconcileInstalled();
+            if (g_cfg.count > 0)
+                this->CheckAll();
         }
         return;
     }
@@ -1042,6 +1042,7 @@ void MainApplication::Tick() {
         if (g_catalog_ok) {
             catalog_free(&g_catalog);
             catalog_load(&g_catalog);
+            this->ReconcileInstalled();
             char m[48];
             snprintf(m, sizeof(m), "Catalog updated: %d apps", g_catalog.count);
             this->Toast(m);
@@ -1049,9 +1050,7 @@ void MainApplication::Tick() {
             this->ToastErr("Catalog update failed");
         }
         if (g_mode == 3) {
-            this->RefreshSettings(); // refresh the shown count
-        } else {
-            this->Refresh();
+            this->RefreshSettings();
         }
         return;
     }
@@ -1211,7 +1210,7 @@ static int build_scan() {
 // ---- settings screen ------------------------------------------------------
 #define SETTING_COUNT 5
 static const char *SETTING_LABELS[SETTING_COUNT] = {
-    "Auto-scan on launch", "Install overlays (.ovl)", "Install sysmodules",
+    "Check for updates on launch", "Install overlays (.ovl)", "Install sysmodules",
     "Install payloads / bootloader", "Test mode (force reinstall)"};
 
 static bool *setting_ptr(int i) {
@@ -1751,10 +1750,6 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         }
         return;
     }
-    if (down & HidNpadButton_L) {
-        this->ReconcileInstalled(); // rescan installed apps + auto-check
-        return;
-    }
     if (down & HidNpadButton_R) {
         this->OpenSettings();
         return;
@@ -1828,17 +1823,15 @@ void MainApplication::OnLoad() {
 
     g_layout = MainLayout::New();
     this->LoadLayout(g_layout);
-    this->Refresh();
 
-    // No auto-scan on every launch. First run only: offer to scan. After that,
-    // scanning is manual (L), unless the user opts into auto-scan in Settings.
-    // Deferred to the first Tick so the dialog runs inside the render loop.
+    this->ReconcileInstalled();
+
     if (!g_settings.first_run_done) {
         g_settings.first_run_done = true;
         settings_save(&g_settings);
-        g_launch_action = 1; // prompt
+        g_launch_action = 1; // prompt: offer to check for updates
     } else if (g_settings.scan_on_launch) {
-        g_launch_action = 2; // opt-in auto-scan
+        g_launch_action = 2; // opt-in: auto-check for updates
     }
 
     // SetOnInput fires every frame (down==0 when idle), so it doubles as the
