@@ -55,6 +55,8 @@ static std::vector<ScanCand> g_scan; // working buffer for ReconcileInstalled
 
 static std::vector<BackupInfo> g_bklist; // snapshots of the app being managed
 static int g_bk_app = -1;                // tracked-app index for the backup view
+static int g_bk_from = 0;                // mode to return to from backup view
+static void scan_backup_dirs();          // forward decl
 
 static Settings g_settings;          // user prefs (settings.json)
 static Excludes g_excludes;          // opt-out list (repos hidden from home)
@@ -1124,7 +1126,7 @@ void MainApplication::RefreshCatalog() {
     }
     g_layout->SetTitle("Supported apps");
     g_layout->SetStatus(st);
-    g_layout->SetFooter("B back  ZL/ZR page");
+    g_layout->SetFooter("B back  ZL/ZR page  + exit");
     g_layout->SetColumns("Name", "Kind", "Status");
 
     s32 keep = g_layout->Sel();
@@ -1253,7 +1255,7 @@ void MainApplication::OpenSettings() {
 void MainApplication::RefreshSettings() {
     g_layout->SetTitle("Settings");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A select  B back");
+    g_layout->SetFooter("A select  B back  + exit");
     g_layout->SetColumns("", "", "");
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
@@ -1331,7 +1333,7 @@ static void render_toggle_list(MainLayout::Ref &lay, const char **labels,
 void MainApplication::RefreshFileInstall() {
     g_layout->SetTitle("File install");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A toggle  B back");
+    g_layout->SetFooter("A toggle  B back  + exit");
     g_layout->SetColumns("Setting", "", "Value");
     render_toggle_list(g_layout, FILEINST_LABELS, fileinst_ptr,
                        fileinst_is_risky, FILEINST_COUNT);
@@ -1340,7 +1342,7 @@ void MainApplication::RefreshFileInstall() {
 void MainApplication::RefreshAdvanced() {
     g_layout->SetTitle("Advanced");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A select  B back");
+    g_layout->SetFooter("A select  B back  + exit");
     g_layout->SetColumns("Setting", "", "Value");
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
@@ -1368,7 +1370,7 @@ void MainApplication::OpenLogs() {
 void MainApplication::RefreshLogMenu() {
     g_layout->SetTitle("View logs");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A open  B back");
+    g_layout->SetFooter("A open  B back  + exit");
     g_layout->SetColumns("Log", "", "Size");
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
@@ -1398,7 +1400,7 @@ void MainApplication::OpenLog(int idx) {
     g_logmenu_sel = g_layout->Sel();
     g_mode = 5;
     g_layout->SetTitle(LOG_TITLES[idx]);
-    g_layout->SetFooter("B back");
+    g_layout->SetFooter("B back  + exit");
     g_layout->ClearColumns(); // log lines use the full width, no header
     g_layout->ClearList();
 
@@ -1466,7 +1468,7 @@ void MainApplication::RefreshExcluded() {
     char st[40];
     snprintf(st, sizeof(st), "%d excluded", g_excludes.count);
     g_layout->SetStatus(st);
-    g_layout->SetFooter("A re-include  B back");
+    g_layout->SetFooter("A re-include  B back  + exit");
     g_layout->ClearColumns();
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
@@ -1529,6 +1531,7 @@ static void load_bklist(int appidx) {
 
 void MainApplication::OpenBackups(int appidx) {
     g_bk_app = appidx;
+    g_bk_from = g_mode;
     g_list_sel = g_layout->Sel();
     load_bklist(appidx);
     g_mode = 6;
@@ -1544,7 +1547,7 @@ void MainApplication::RefreshBackups() {
     snprintf(st, sizeof(st), "%d snapshot%s", (int)g_bklist.size(),
              g_bklist.size() == 1 ? "" : "s");
     g_layout->SetStatus(st);
-    g_layout->SetFooter("A restore  X delete  Y clear all  B back");
+    g_layout->SetFooter("A restore  X delete  Y clear all  B back  + exit");
     g_layout->SetColumns("Restore to", "Was", "When");
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
@@ -1617,18 +1620,41 @@ void MainApplication::ClearBackups() {
         net_log("BACKUP clear all: %s", g_cfg.apps[g_bk_app].repo);
         backup_clear(g_cfg.apps[g_bk_app].repo);
         this->Toast("Cleared");
-        g_mode = 0;
-        this->Refresh();
-        g_layout->SetSel(g_list_sel);
+        if (g_bk_from == 10) {
+            scan_backup_dirs();
+            g_mode = 10;
+            this->RefreshAllBackups();
+        } else {
+            g_mode = 0;
+            this->Refresh();
+            g_layout->SetSel(g_list_sel);
+        }
     }
 }
 
 // ---- global backup browser (mode 10) --------------------------------------
 struct BkEntry {
-    std::string name; // directory name (slug)
-    int count;        // number of snapshots
+    std::string name;  // display name (app name or slug if orphaned)
+    std::string slug;  // directory name on disk
+    std::string repo;  // matched repo from g_cfg ("" if orphaned)
+    int app_idx;       // index into g_cfg.apps (-1 if orphaned)
+    int count;         // number of snapshots
 };
 static std::vector<BkEntry> g_allbk;
+
+static void slugify_local(const char *repo, char *out, size_t outsz) {
+    size_t j = 0;
+    for (size_t i = 0; repo[i] && j + 1 < outsz; i++) {
+        char c = repo[i];
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.') {
+            out[j++] = c;
+        } else {
+            out[j++] = '_';
+        }
+    }
+    out[j] = '\0';
+}
 
 static void scan_backup_dirs() {
     g_allbk.clear();
@@ -1649,7 +1675,19 @@ static void scan_backup_dirs() {
             }
             closedir(sub);
         }
-        g_allbk.push_back({e->d_name, snapshots});
+        std::string repo;
+        int app_idx = -1;
+        char slug[160];
+        for (int i = 0; i < g_cfg.count; i++) {
+            slugify_local(g_cfg.apps[i].repo, slug, sizeof(slug));
+            if (strcmp(slug, e->d_name) == 0) {
+                repo = g_cfg.apps[i].repo;
+                app_idx = i;
+                break;
+            }
+        }
+        std::string label = repo.empty() ? std::string(e->d_name) : std::string(g_cfg.apps[app_idx].name);
+        g_allbk.push_back({label, e->d_name, repo, app_idx, snapshots});
     }
     closedir(d);
     std::sort(g_allbk.begin(), g_allbk.end(),
@@ -1662,7 +1700,7 @@ void MainApplication::RefreshAllBackups() {
     snprintf(st, sizeof(st), "%d app%s", (int)g_allbk.size(),
              g_allbk.size() == 1 ? "" : "s");
     g_layout->SetStatus(st);
-    g_layout->SetFooter("A view  X delete  B back");
+    g_layout->SetFooter("A view  X delete  B back  + exit");
     g_layout->SetColumns("App", "", "Snapshots");
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
@@ -1683,15 +1721,15 @@ void MainApplication::RefreshAllBackups() {
 void MainApplication::DeleteBackupFolder() {
     s32 i = g_layout->Sel();
     if (i < 0 || i >= (int)g_allbk.size()) return;
-    std::string name = g_allbk[i].name;
+    const BkEntry &bk = g_allbk[i];
     if (!this->Confirm("Delete backups",
-                       "Delete ALL backups for " + name + "?"))
+                       "Delete ALL backups for " + bk.name + "?"))
         return;
-    std::string path = std::string(BACKUP_DIR) + "/" + name;
+    std::string path = std::string(BACKUP_DIR) + "/" + bk.slug;
     net_log("BACKUP delete folder: %s", path.c_str());
     if (fs_rm_rf(path.c_str())) {
         net_log("BACKUP delete folder: ok");
-        this->Toast("Deleted " + name);
+        this->Toast("Deleted " + bk.name);
     } else {
         net_log("BACKUP delete folder: FAILED");
         this->ToastErr("Delete failed");
@@ -1748,6 +1786,10 @@ void MainApplication::ReconcileInstalled() {
             apps_remove(&g_cfg, i);
         }
     }
+    std::sort(g_cfg.apps, g_cfg.apps + g_cfg.count,
+              [](const App &a, const App &b) {
+                  return strcasecmp(a.name, b.name) < 0;
+              });
     apps_save(&g_cfg);
     seed_states_from_cache();
     this->Refresh();
@@ -1794,6 +1836,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
 
     // ---- supported-apps browse (read-only) ----
     if (g_mode == 1) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             this->CloseCatalog();
         }
@@ -1802,6 +1845,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
 
     // ---- excluded-apps manager ----
     if (g_mode == 7) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             g_mode = 3;
             this->RefreshSettings();
@@ -1814,6 +1858,10 @@ void MainApplication::HandleInput(u64 down, u64 held) {
 
     // ---- settings mode ----
     if (g_mode == 3) {
+        if (down & HidNpadButton_Plus) {
+            this->Close();
+            return;
+        }
         if (down & HidNpadButton_B) {
             g_mode = 0;
             this->Refresh();
@@ -1846,6 +1894,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     }
 
     if (g_mode == 8) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             g_mode = 3;
             this->RefreshSettings();
@@ -1857,6 +1906,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     }
 
     if (g_mode == 9) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             g_mode = 3;
             this->RefreshSettings();
@@ -1876,9 +1926,17 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     }
 
     if (g_mode == 10) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             g_mode = 9;
             this->RefreshAdvanced();
+        } else if (down & HidNpadButton_A) {
+            s32 sel = g_layout->Sel();
+            if (sel >= 0 && sel < (int)g_allbk.size() && g_allbk[sel].app_idx >= 0) {
+                this->OpenBackups(g_allbk[sel].app_idx);
+            } else if (sel >= 0 && sel < (int)g_allbk.size()) {
+                this->Toast("No tracked app for this backup");
+            }
         } else if (down & HidNpadButton_X) {
             this->DeleteBackupFolder();
         }
@@ -1887,6 +1945,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
 
     // ---- log picker ----
     if (g_mode == 4) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             g_mode = 3;
             this->RefreshSettings();
@@ -1899,6 +1958,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
 
     // ---- log contents ----
     if (g_mode == 5) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             g_mode = 4;
             this->RefreshLogMenu();
@@ -1909,10 +1969,18 @@ void MainApplication::HandleInput(u64 down, u64 held) {
 
     // ---- manage backups ----
     if (g_mode == 6) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
-            g_mode = 0;
-            this->Refresh();
-            g_layout->SetSel(g_list_sel);
+            if (g_bk_from == 10) {
+                scan_backup_dirs();
+                g_mode = 10;
+                this->RefreshAllBackups();
+                g_layout->SetSel(g_list_sel);
+            } else {
+                g_mode = 0;
+                this->Refresh();
+                g_layout->SetSel(g_list_sel);
+            }
         } else if (down & HidNpadButton_A) {
             this->RevertBackup();
         } else if (down & HidNpadButton_X) {
