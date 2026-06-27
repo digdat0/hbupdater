@@ -70,13 +70,14 @@
     <input type="text" id="search" placeholder="filter by name / repo…">
     <button class="btn add" id="addApp">+ Add app</button>
     <button class="btn alt" id="checkAll">Check visible</button>
-    <button class="btn" id="download">Download JSON</button>
+    <button class="btn" id="save">Save to romfs</button>
+    <button class="btn alt" id="download">Download JSON</button>
     <span class="count" id="catCount"></span>
   </div>
 
   <!-- Unmatched toolbar -->
   <div class="toolbar hidden" id="unmBar">
-    <input type="file" id="ufile" accept=".log,.txt,text/plain">
+    <button class="btn alt" id="ufileBtn">Load unmatched.log</button>
     <span class="count" id="unmCount"></span>
     <span class="mut" style="font-size:12px">Fill the <b>Repo</b>, then <b>↑ Promote</b> into the catalog. Switch to the Catalog tab to Download.</span>
   </div>
@@ -262,21 +263,67 @@ $('addApp').addEventListener('click', () => {
 });
 $('search').addEventListener('input', renderCatalog);
 
-$('download').addEventListener('click', () => {
+function buildJson() {
   const clean = apps.map(a => { const c = Object.assign({}, a); delete c._new; return c; });
-  const out = JSON.stringify({ apps: clean }, null, 2) + '\n';
-  const blob = new Blob([out], { type: 'application/json' });
+  return JSON.stringify({ apps: clean }, null, 2) + '\n';
+}
+
+let romfsHandle = null;
+$('save').addEventListener('click', async () => {
+  try {
+    if (!romfsHandle) {
+      romfsHandle = await window.showSaveFilePicker({
+        suggestedName: 'known_repos.json',
+        startIn: 'desktop',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+      });
+    }
+    const w = await romfsHandle.createWritable();
+    await w.write(buildJson());
+    await w.close();
+    $('catCount').textContent += ' — saved!';
+  } catch (err) {
+    if (err.name !== 'AbortError') alert('Save failed: ' + err.message);
+  }
+});
+
+$('download').addEventListener('click', () => {
+  const blob = new Blob([buildJson()], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'known_repos.json'; a.click();
 });
 
 /* ---- unmatched ---- */
-$('ufile').addEventListener('change', e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => { unmatched = parseUnmatched(r.result); renderUnmatched(); };
-  r.readAsText(f);
+let unmHandle = null;
+
+$('ufileBtn').addEventListener('click', async () => {
+  try {
+    const [h] = await window.showOpenFilePicker({
+      types: [{ description: 'Log files', accept: { 'text/plain': ['.log', '.txt'] } }]
+    });
+    unmHandle = h;
+    const f = await h.getFile();
+    const text = await f.text();
+    unmatched = parseUnmatched(text);
+    renderUnmatched();
+  } catch (err) {
+    if (err.name !== 'AbortError') alert('Load failed: ' + err.message);
+  }
 });
+
+async function saveUnmatched() {
+  if (!unmHandle) return;
+  try {
+    const lines = ['# name\tversion\tpath'];
+    unmatched.forEach(u => {
+      if (!u._promoted) lines.push(u.name + '\t' + (u._ver || '-') + '\t' + (u.default_path || ''));
+    });
+    lines.push('# ' + unmatched.filter(u => !u._promoted).length + ' unmatched');
+    const w = await unmHandle.createWritable();
+    await w.write(lines.join('\n') + '\n');
+    await w.close();
+  } catch (err) { /* silent — file write is best-effort */ }
+}
 
 function parseUnmatched(text) {
   const out = [];
@@ -309,7 +356,8 @@ function renderUnmatched() {
       '<td style="min-width:190px"><input type="text" data-i="' + idx + '" data-k="default_path" value="' + esc(u.default_path) + '"></td>' +
       '<td class="mut">' + esc(u._ver) + '</td>' +
       '<td class="status" data-ustatus="' + idx + '"><button class="btn alt sm" data-ucheck="' + idx + '">check</button></td>' +
-      '<td><button class="btn promote sm" data-promote="' + idx + '"' + (u._promoted ? ' disabled' : '') + '>' + (u._promoted ? '✓ added' : '↑ Promote') + '</button></td>';
+      '<td><button class="btn promote sm" data-promote="' + idx + '"' + (u._promoted ? ' disabled' : '') + '>' + (u._promoted ? '✓ added' : '↑ Promote') + '</button>' +
+      ' <button class="btn del sm" data-udel="' + idx + '">✕</button></td>';
     tb.appendChild(tr);
   });
   const left = unmatched.filter(u => !u._promoted).length;
@@ -330,6 +378,7 @@ function wireUnmatched() {
   tb.querySelectorAll('select[data-k=asset_kind]').forEach(s => s.addEventListener('change', () => unmatched[+s.dataset.i].asset_kind = s.value));
   tb.querySelectorAll('[data-ucheck]').forEach(b => b.addEventListener('click', () => checkInto(unmatched[+b.dataset.ucheck].repo, document.querySelector('[data-ustatus="' + b.dataset.ucheck + '"]'))));
   tb.querySelectorAll('[data-promote]').forEach(b => b.addEventListener('click', () => promote(+b.dataset.promote)));
+  tb.querySelectorAll('[data-udel]').forEach(b => b.addEventListener('click', () => { unmatched.splice(+b.dataset.udel, 1); renderUnmatched(); saveUnmatched(); }));
 }
 
 function promote(i) {
@@ -343,12 +392,14 @@ function promote(i) {
   u._promoted = true;
   renderUnmatched();
   renderCatalog();
+  saveUnmatched();
 }
 
 /* ---- shared GitHub check ---- */
 async function checkInto(repo, cell) {
   if (!repo) { cell.innerHTML = '<span class="mut">no repo</span>'; return; }
   cell.innerHTML = '<span class="mut">checking…</span>';
+  const recheckBtn = ' <button class="btn alt sm" onclick="checkInto(\'' + esc(repo).replace(/'/g, "\\'") + '\', this.parentElement)">recheck</button>';
   try {
     const res = await fetch('https://api.github.com/repos/' + repo + '/releases?per_page=5', { headers: ghHeaders() });
     if (res.status === 200) {
@@ -356,10 +407,10 @@ async function checkInto(repo, cell) {
       let assets = [], tag = '';
       for (const r of rels) { if (!r.draft) { assets = (r.assets || []).map(x => x.name); tag = r.tag_name; break; } }
       cell.innerHTML = '<span class="ok">200</span> <span class="mut">' + esc(tag) + '</span><div class="mut" style="font-size:11px;font-weight:400">' + esc(assets.join(', ').slice(0, 140)) + '</div>';
-    } else if (res.status === 404) { cell.innerHTML = '<span class="bad">404 not found</span>'; }
-    else if (res.status === 403) { cell.innerHTML = '<span class="warn">403 rate-limited</span>'; }
-    else { cell.innerHTML = '<span class="warn">' + res.status + '</span>'; }
-  } catch (err) { cell.innerHTML = '<span class="bad">network err</span>'; }
+    } else if (res.status === 404) { cell.innerHTML = '<span class="bad">404 not found</span>' + recheckBtn; }
+    else if (res.status === 403) { cell.innerHTML = '<span class="warn">403 rate-limited</span>' + recheckBtn; }
+    else { cell.innerHTML = '<span class="warn">' + res.status + '</span>' + recheckBtn; }
+  } catch (err) { cell.innerHTML = '<span class="bad">network err</span>' + recheckBtn; }
 }
 
 $('checkAll').addEventListener('click', async () => {

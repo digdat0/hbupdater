@@ -1617,11 +1617,6 @@ void MainApplication::ReconcileInstalled() {
         g_pending_toast = m;
     }
 
-    // Auto-identify updates: check only stale apps (rate-limit friendly).
-    if (g_cfg.count > 0) {
-        g_check_stale = true;
-        this->CheckAll();
-    }
 }
 
 void MainApplication::HandleInput(u64 down, u64 held) {
