@@ -1,9 +1,166 @@
 {
   "apps": [
     {
+      "name": "SimpleModDownloader",
+      "nacp_name": [
+        "SimpleModDownloader"
+      ],
+      "repo": "PoloNX/SimpleModDownloader",
+      "asset": "SimpleModDownloader.nro",
+      "asset_kind": "nro",
+      "tag_example": "2.3.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/SimpleModDownloader.nro"
+    },
+    {
+      "name": "ScreenTester-NX",
+      "nacp_name": [
+        "ScreenTester-NX"
+      ],
+      "repo": "Marice/ScreenTester-NX",
+      "asset": "ScreenTester-NX.nro",
+      "asset_kind": "nro",
+      "tag_example": "0.2",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/ScreenTester-NX/ScreenTester-NX.nro"
+    },
+    {
+      "name": "DarkMatterCore/nxdumptool",
+      "nacp_name": [
+        "DarkMatterCore/nxdumptool"
+      ],
+      "repo": "DarkMatterCore/nxdumptool",
+      "asset": "nxdt_rw_poc.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.1.15",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/nxdt_rw_poc.nro"
+    },
+    {
+      "name": "nxdt_rw_poc",
+      "nacp_name": [
+        "nxdt_rw_poc"
+      ],
+      "repo": "DarkMatterCore/nxdumptool",
+      "asset": "nxdumptool.nro",
+      "asset_kind": "nro",
+      "tag_example": "2.0.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/nxdumptool.nro"
+    },
+    {
+      "name": "NX-Update-Checker",
+      "nacp_name": [
+        "NX-Update-Checker"
+      ],
+      "repo": "16BitWonder/NX-Update-Checker",
+      "asset": "NX-Update-Checker.nro",
+      "asset_kind": "nro",
+      "tag_example": "v1.5.4",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/NX-Update-Checker.nro"
+    },
+    {
+      "name": "NX-Mod-Manager",
+      "nacp_name": [
+        "NX-Mod-Manager"
+      ],
+      "repo": "TOM-BadEN/NX-Mod-Manager",
+      "asset": "NX-Mod-Manager.nro",
+      "asset_kind": "nro",
+      "tag_example": "3.1.5",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/NX-Mod-Manager.nro"
+    },
+    {
+      "name": "Lockpick",
+      "nacp_name": [
+        "Lockpick"
+      ],
+      "repo": "saneki/Lockpick_RCM",
+      "asset": "Lockpick.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.2.6",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/Lockpick.nro"
+    },
+    {
+      "name": "AmiiSwap",
+      "nacp_name": [
+        "AmiiSwap"
+      ],
+      "repo": "FuryBaguette/AmiiSwap",
+      "asset": "AmiiSwap.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/AmiiSwap/AmiiSwap.nro"
+    },
+    {
+      "name": "AmiiboGenerator",
+      "nacp_name": [
+        "AmiiboGenerator"
+      ],
+      "repo": "Slluxx/AmiiboGenerator",
+      "asset": "AmiiboGenerator.nro",
+      "asset_kind": "nro",
+      "tag_example": "2.1.1",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/AmiiboGenerator/AmiiboGenerator.nro"
+    },
+    {
+      "name": "BotW Unexplored",
+      "nacp_name": [
+        "BotW Unexplored"
+      ],
+      "repo": "lud99/botw-unexplored",
+      "asset": "botw-unexplored.nro",
+      "asset_kind": "nro",
+      "tag_example": "2.0.1",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/botw-unexplored.nro"
+    },
+    {
+      "name": "SwitchWave",
+      "nacp_name": [
+        "SwitchWave"
+      ],
+      "repo": "averne/SwitchWave",
+      "asset": "SwitchWave.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.1.1",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/SwitchWave/SwitchWave.nro"
+    },
+    {
       "name": " A Square Astray",
       "repo": "TheLogicMaster/A-Square-Astray-SwitchGDX",
-      "nacp_name": [" A Square Astray", "A-Square-Astray-Public"],
+      "nacp_name": [
+        " A Square Astray",
+        "A-Square-Astray-Public"
+      ],
       "asset": "A-Square-Astray-Public.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0",
@@ -15,7 +172,10 @@
     {
       "name": " Flare-Switch-port",
       "repo": "Riviera71/Flare-Switch-port",
-      "nacp_name": [" Flare-Switch-port", "flare"],
+      "nacp_name": [
+        " Flare-Switch-port",
+        "flare"
+      ],
       "asset": "flare.nro",
       "asset_kind": "nro",
       "tag_example": "1.11",
@@ -27,7 +187,10 @@
     {
       "name": "2 Planes",
       "repo": "mactec0/2Planes_SWITCH",
-      "nacp_name": ["2 Planes", "2PlanesSwitch"],
+      "nacp_name": [
+        "2 Planes",
+        "2PlanesSwitch"
+      ],
       "asset": "2PlanesSwitch.nro",
       "asset_kind": "nro",
       "tag_example": "1.0.1",
@@ -39,7 +202,9 @@
     {
       "name": "AIO Switch Updater",
       "repo": "HamletDuFromage/AIO-switch-updater",
-      "nacp_name": ["AIO Switch Updater"],
+      "nacp_name": [
+        "AIO Switch Updater"
+      ],
       "asset": "aio-switch-updater.nro",
       "asset_kind": "nro",
       "tag_example": "v2.23.2",
@@ -51,7 +216,9 @@
     {
       "name": "Amiigo",
       "repo": "CompSciOrBust/Amiigo",
-      "nacp_name": ["Amiigo"],
+      "nacp_name": [
+        "Amiigo"
+      ],
       "asset": "Amiigo.nro",
       "asset_kind": "nro",
       "tag_example": "v2.3.0",
@@ -63,7 +230,10 @@
     {
       "name": "Apollo",
       "repo": "evo-brut3/Apollo",
-      "nacp_name": ["Apollo", "Apollo_0.1"],
+      "nacp_name": [
+        "Apollo",
+        "Apollo_0.1"
+      ],
       "asset": "Apollo_0.1.nro",
       "asset_kind": "nro",
       "tag_example": "0.1",
@@ -75,7 +245,9 @@
     {
       "name": "Argon-NX",
       "repo": "Guillem96/argon-nx",
-      "nacp_name": ["Argon-NX"],
+      "nacp_name": [
+        "Argon-NX"
+      ],
       "asset": "argon-nx.bin",
       "asset_kind": "bin",
       "tag_example": "v1.0.0",
@@ -87,7 +259,10 @@
     {
       "name": "Arkanoid NX",
       "repo": "Manurocker95/ArkanoidNX",
-      "nacp_name": ["Arkanoid NX", "Arkanoid_NX"],
+      "nacp_name": [
+        "Arkanoid NX",
+        "Arkanoid_NX"
+      ],
       "asset": "Arkanoid_NX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -99,7 +274,10 @@
     {
       "name": "ASCII Star Wars",
       "repo": "TooTallNate/switch-ascii-starwars",
-      "nacp_name": ["ASCII Star Wars", "ascii-starwars"],
+      "nacp_name": [
+        "ASCII Star Wars",
+        "ascii-starwars"
+      ],
       "asset": "ascii-starwars.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -111,7 +289,10 @@
     {
       "name": "AuroraChat for Switch",
       "repo": "Unitendo/aurorachat-switch",
-      "nacp_name": ["AuroraChat for Switch", "aurorachat-switch"],
+      "nacp_name": [
+        "AuroraChat for Switch",
+        "aurorachat-switch"
+      ],
       "asset": "aurorachat-switch.nro",
       "asset_kind": "nro",
       "tag_example": "v0.6.0",
@@ -123,7 +304,9 @@
     {
       "name": "Awoo Installer",
       "repo": "Huntereb/Awoo-Installer",
-      "nacp_name": ["Awoo Installer"],
+      "nacp_name": [
+        "Awoo Installer"
+      ],
       "asset": "Awoo-Installer.nro",
       "asset_kind": "nro",
       "tag_example": "1.3.6",
@@ -135,7 +318,9 @@
     {
       "name": "AXChip8",
       "repo": "darkxex/AXChip8",
-      "nacp_name": ["AXChip8"],
+      "nacp_name": [
+        "AXChip8"
+      ],
       "asset": "AXChip8.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -147,7 +332,9 @@
     {
       "name": "Battery Desync Fix NX",
       "repo": "CTCaer/battery_desync_fix_nx",
-      "nacp_name": ["Battery Desync Fix NX"],
+      "nacp_name": [
+        "Battery Desync Fix NX"
+      ],
       "asset": "battery_desync_fix_nx.nro",
       "asset_kind": "nro",
       "tag_example": "v1.3.0",
@@ -159,7 +346,10 @@
     {
       "name": "Bejeweled NX",
       "repo": "Manurocker95/Bejeweled-NX",
-      "nacp_name": ["Bejeweled NX", "Bejeweled_NX"],
+      "nacp_name": [
+        "Bejeweled NX",
+        "Bejeweled_NX"
+      ],
       "asset": "Bejeweled_NX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -171,7 +361,9 @@
     {
       "name": "Bluetooth Audio Overlay",
       "repo": "masagrator/BluetoothAudioOverlay",
-      "nacp_name": ["BluetoothAudioOverlay"],
+      "nacp_name": [
+        "BluetoothAudioOverlay"
+      ],
       "asset": "BluetoothAudio.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.0.0",
@@ -183,7 +375,10 @@
     {
       "name": "Brainfuck Interpreter",
       "repo": "TheKgg/switch-brainfuck",
-      "nacp_name": ["Brainfuck Interpreter", "Brainfuck_Interpreter"],
+      "nacp_name": [
+        "Brainfuck Interpreter",
+        "Brainfuck_Interpreter"
+      ],
       "asset": "Brainfuck_Interpreter.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0",
@@ -195,7 +390,9 @@
     {
       "name": "Breeze",
       "repo": "tomvita/Breeze",
-      "nacp_name": ["Breeze"],
+      "nacp_name": [
+        "Breeze"
+      ],
       "asset": "Breeze.nro",
       "asset_kind": "nro",
       "tag_example": "beta34",
@@ -207,7 +404,9 @@
     {
       "name": "BrowseNX",
       "repo": "crc-32/BrowseNX",
-      "nacp_name": ["BrowseNX"],
+      "nacp_name": [
+        "BrowseNX"
+      ],
       "asset": "BrowseNX.nro",
       "asset_kind": "nro",
       "tag_example": "v0.1.1",
@@ -219,7 +418,9 @@
     {
       "name": "CamNX",
       "repo": "sertay1/CamNX",
-      "nacp_name": ["CamNX"],
+      "nacp_name": [
+        "CamNX"
+      ],
       "asset": "CamNX.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -231,7 +432,9 @@
     {
       "name": "Cannonball",
       "repo": "djyt/cannonball",
-      "nacp_name": ["Cannonball"],
+      "nacp_name": [
+        "Cannonball"
+      ],
       "asset": "cannonball.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -243,7 +446,9 @@
     {
       "name": "Checkpoint Save Manager",
       "repo": "FlagBrew/Checkpoint",
-      "nacp_name": ["Checkpoint"],
+      "nacp_name": [
+        "Checkpoint"
+      ],
       "asset": "Checkpoint.nro",
       "asset_kind": "nro",
       "tag_example": "v3.8.0",
@@ -255,7 +460,9 @@
     {
       "name": "Chiaki",
       "repo": "streetpea/chiaki4deck",
-      "nacp_name": ["Chiaki"],
+      "nacp_name": [
+        "Chiaki"
+      ],
       "asset": "chiaki.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -267,7 +474,9 @@
     {
       "name": "ConsoleEditor",
       "repo": "jiangyibin/ConsoleEditor",
-      "nacp_name": ["ConsoleEditor"],
+      "nacp_name": [
+        "ConsoleEditor"
+      ],
       "asset": "ConsoleEditor.nro",
       "asset_kind": "nro",
       "tag_example": "v0.1.0",
@@ -279,7 +488,9 @@
     {
       "name": "CustomBootScreen",
       "repo": "esteban-cz/CustomBootScreen",
-      "nacp_name": ["CustomBootScreen"],
+      "nacp_name": [
+        "CustomBootScreen"
+      ],
       "asset": "CustomBootScreen.nro",
       "asset_kind": "nro",
       "tag_example": "v1.3.0",
@@ -291,7 +502,9 @@
     {
       "name": "Daybreak",
       "repo": "SciresM/Atmosphere",
-      "nacp_name": ["Daybreak"],
+      "nacp_name": [
+        "Daybreak"
+      ],
       "asset": "daybreak.nro",
       "asset_kind": "nro",
       "tag_example": "v1.7.0",
@@ -303,7 +516,9 @@
     {
       "name": "DBI",
       "repo": "rashevskyv/dbi",
-      "nacp_name": ["DBI"],
+      "nacp_name": [
+        "DBI"
+      ],
       "asset": "DBI.nro",
       "asset_kind": "nro",
       "tag_example": "v658",
@@ -315,7 +530,9 @@
     {
       "name": "DNS.mitm Checker",
       "repo": "TaylorRodriguez/dns-mitm-checker",
-      "nacp_name": ["DNS.mitm Checker"],
+      "nacp_name": [
+        "DNS.mitm Checker"
+      ],
       "asset": "dns-mitm-checker.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -327,7 +544,10 @@
     {
       "name": "Do u no de wae",
       "repo": "3096/wae",
-      "nacp_name": ["Do u no de wae", "wae"],
+      "nacp_name": [
+        "Do u no de wae",
+        "wae"
+      ],
       "asset": "wae.nro",
       "asset_kind": "nro",
       "tag_example": "0.1",
@@ -339,7 +559,9 @@
     {
       "name": "Donut",
       "repo": "tedlipper/Switch-Ascii-Donut",
-      "nacp_name": ["Donut"],
+      "nacp_name": [
+        "Donut"
+      ],
       "asset": "Donut.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0",
@@ -351,7 +573,10 @@
     {
       "name": "Dr-Driller",
       "repo": "llakssz/Dr-Driller",
-      "nacp_name": ["Dr-Driller", "DrDriller"],
+      "nacp_name": [
+        "Dr-Driller",
+        "DrDriller"
+      ],
       "asset": "DrDriller.nro",
       "asset_kind": "nro",
       "tag_example": "0.6",
@@ -363,7 +588,9 @@
     {
       "name": "EasyRPG Player",
       "repo": "EasyRPG/Player",
-      "nacp_name": ["EasyRPG Player"],
+      "nacp_name": [
+        "EasyRPG Player"
+      ],
       "asset": "easyrpg-player.nro",
       "asset_kind": "nro",
       "tag_example": "v0.8",
@@ -375,7 +602,9 @@
     {
       "name": "EdiZon Overlay",
       "repo": "WerWolv/EdiZon-Overlay",
-      "nacp_name": ["EdiZon Overlay"],
+      "nacp_name": [
+        "EdiZon Overlay"
+      ],
       "asset": "ovlEdiZon.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.0.4",
@@ -387,7 +616,9 @@
     {
       "name": "EdiZon SE",
       "repo": "tomvita/EdiZon-SE",
-      "nacp_name": ["EdiZon SE"],
+      "nacp_name": [
+        "EdiZon SE"
+      ],
       "asset": "EdiZon.nro",
       "asset_kind": "nro",
       "tag_example": "v3.8.38",
@@ -399,7 +630,9 @@
     {
       "name": "emuiibo",
       "repo": "XorTroll/emuiibo",
-      "nacp_name": ["emuiibo"],
+      "nacp_name": [
+        "emuiibo"
+      ],
       "asset": "emuiibo.zip",
       "asset_kind": "zip",
       "tag_example": "v1.0.0",
@@ -411,7 +644,9 @@
     {
       "name": "emummc-toggle",
       "repo": "LittlestCube/emummc-toggle",
-      "nacp_name": ["emummc-toggle"],
+      "nacp_name": [
+        "emummc-toggle"
+      ],
       "asset": "emummc-toggle.nro",
       "asset_kind": "nro",
       "tag_example": "0.0.1",
@@ -423,7 +658,10 @@
     {
       "name": "Evolution Saved Me NX",
       "repo": "Manurocker95/Evolution-Saved-Me-NX",
-      "nacp_name": ["Evolution Saved Me NX", "Evolution_Saved_Me_NX"],
+      "nacp_name": [
+        "Evolution Saved Me NX",
+        "Evolution_Saved_Me_NX"
+      ],
       "asset": "Evolution_Saved_Me_NX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -435,7 +673,9 @@
     {
       "name": "fake-08",
       "repo": "jtothebell/fake-08",
-      "nacp_name": ["fake-08"],
+      "nacp_name": [
+        "fake-08"
+      ],
       "asset": "fake-08_Switch.nro",
       "asset_kind": "nro",
       "tag_example": "v0.0.2.20",
@@ -447,7 +687,9 @@
     {
       "name": "FastCFWSwitch",
       "repo": "HamletDuFromage/FastCFWSwitch",
-      "nacp_name": ["FastCFWSwitch"],
+      "nacp_name": [
+        "FastCFWSwitch"
+      ],
       "asset": "fastcfwswitch.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.3.1",
@@ -459,7 +701,9 @@
     {
       "name": "FCEUmm",
       "repo": "libretro/libretro-fceumm",
-      "nacp_name": ["FCEUmm"],
+      "nacp_name": [
+        "FCEUmm"
+      ],
       "asset": "fceumm_libretro_switch.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -471,7 +715,10 @@
     {
       "name": "Fifteen NX",
       "repo": "Manurocker95/FifteenNX",
-      "nacp_name": ["Fifteen NX", "Fifteen_NX"],
+      "nacp_name": [
+        "Fifteen NX",
+        "Fifteen_NX"
+      ],
       "asset": "Fifteen_NX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -483,7 +730,10 @@
     {
       "name": "Fix Cheat",
       "repo": "jiraiya78/nxfixcheat",
-      "nacp_name": ["Fix Cheat", "nxfixcheat"],
+      "nacp_name": [
+        "Fix Cheat",
+        "nxfixcheat"
+      ],
       "asset": "nxfixcheat.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0",
@@ -495,7 +745,10 @@
     {
       "name": "Flappy Bird NX",
       "repo": "Manurocker95/FlappyBird",
-      "nacp_name": ["Flappy Bird NX", "Flappy_Bird_NX"],
+      "nacp_name": [
+        "Flappy Bird NX",
+        "Flappy_Bird_NX"
+      ],
       "asset": "Flappy_Bird_NX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -507,7 +760,9 @@
     {
       "name": "FPSLocker",
       "repo": "masagrator/FPSLocker",
-      "nacp_name": ["FPSLocker"],
+      "nacp_name": [
+        "FPSLocker"
+      ],
       "asset": "FPSLocker.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.2.6",
@@ -519,7 +774,9 @@
     {
       "name": "ftpd",
       "repo": "mtheall/ftpd",
-      "nacp_name": ["ftpd"],
+      "nacp_name": [
+        "ftpd"
+      ],
       "asset": "ftpd.nro",
       "asset_kind": "nro",
       "tag_example": "v3.1.0",
@@ -531,7 +788,9 @@
     {
       "name": "GameLad",
       "repo": "darkxex/GameLad-for-Nintendo-Switch",
-      "nacp_name": ["GameLad"],
+      "nacp_name": [
+        "GameLad"
+      ],
       "asset": "GameLad.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -543,7 +802,9 @@
     {
       "name": "Goldleaf",
       "repo": "XorTroll/Goldleaf",
-      "nacp_name": ["Goldleaf"],
+      "nacp_name": [
+        "Goldleaf"
+      ],
       "asset": "Goldleaf.nro",
       "asset_kind": "nro",
       "tag_example": "1.0.0",
@@ -555,7 +816,9 @@
     {
       "name": "Hekate",
       "repo": "CTCaer/hekate",
-      "nacp_name": ["hekate"],
+      "nacp_name": [
+        "hekate"
+      ],
       "asset": "hekate_ctcaer_*.zip",
       "asset_kind": "zip",
       "tag_example": "v6.1.1",
@@ -567,7 +830,10 @@
     {
       "name": "Hello Colours!",
       "repo": "OkiStuff/hello_colours",
-      "nacp_name": ["Hello Colours!", "hello_colours"],
+      "nacp_name": [
+        "Hello Colours!",
+        "hello_colours"
+      ],
       "asset": "hello_colours.nro",
       "asset_kind": "nro",
       "tag_example": "1.0.1",
@@ -579,7 +845,9 @@
     {
       "name": "Homebrew App Store",
       "repo": "fortheusers/hb-appstore",
-      "nacp_name": ["Homebrew App Store"],
+      "nacp_name": [
+        "Homebrew App Store"
+      ],
       "asset": "appstore.nro",
       "asset_kind": "nro",
       "tag_example": "v2.3.2",
@@ -591,7 +859,10 @@
     {
       "name": "Hot-Pocolate",
       "repo": "illteteka/Hot-Pocolate",
-      "nacp_name": ["Hot-Pocolate", "HotPocolate"],
+      "nacp_name": [
+        "Hot-Pocolate",
+        "HotPocolate"
+      ],
       "asset": "HotPocolate.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -603,7 +874,9 @@
     {
       "name": "Incognito_RCM",
       "repo": "shchmue/Incognito_RCM",
-      "nacp_name": ["Incognito_RCM"],
+      "nacp_name": [
+        "Incognito_RCM"
+      ],
       "asset": "Incognito_RCM.bin",
       "asset_kind": "bin",
       "tag_example": "v0.6.8",
@@ -615,7 +888,10 @@
     {
       "name": "Internal Speakers",
       "repo": "paulocode/switch_internal_speakers_nro",
-      "nacp_name": ["Internal Speakers", "internal-speaker"],
+      "nacp_name": [
+        "Internal Speakers",
+        "internal-speaker"
+      ],
       "asset": "internal-speaker.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -627,7 +903,9 @@
     {
       "name": "InvadersNX",
       "repo": "MaesterRowen/InvadersNX",
-      "nacp_name": ["InvadersNX"],
+      "nacp_name": [
+        "InvadersNX"
+      ],
       "asset": "InvadersNX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -639,7 +917,10 @@
     {
       "name": "Jewel Thief",
       "repo": "TheLogicMaster/jewelthief",
-      "nacp_name": ["Jewel Thief", "jewelthief"],
+      "nacp_name": [
+        "Jewel Thief",
+        "jewelthief"
+      ],
       "asset": "jewelthief.nro",
       "asset_kind": "nro",
       "tag_example": "v2.0",
@@ -651,7 +932,9 @@
     {
       "name": "JKSV",
       "repo": "J-D-K/JKSV",
-      "nacp_name": ["JKSV"],
+      "nacp_name": [
+        "JKSV"
+      ],
       "asset": "JKSV.nro",
       "asset_kind": "nro",
       "tag_example": "09.01.2023",
@@ -663,7 +946,10 @@
     {
       "name": "Klooni 1010",
       "repo": "TheLogicMaster/Klooni1010",
-      "nacp_name": ["Klooni 1010", "Klooni1010"],
+      "nacp_name": [
+        "Klooni 1010",
+        "Klooni1010"
+      ],
       "asset": "Klooni1010.nro",
       "asset_kind": "nro",
       "tag_example": "0.8.6",
@@ -675,7 +961,10 @@
     {
       "name": "La Deuda",
       "repo": "soykhaler/LaDeuda",
-      "nacp_name": ["La Deuda", "LaDeuda"],
+      "nacp_name": [
+        "La Deuda",
+        "LaDeuda"
+      ],
       "asset": "La.Deuda_switch.nro",
       "asset_kind": "nro",
       "tag_example": "release",
@@ -687,7 +976,9 @@
     {
       "name": "ldn_mitm",
       "repo": "spacemeowx2/ldn_mitm",
-      "nacp_name": ["ldn_mitm"],
+      "nacp_name": [
+        "ldn_mitm"
+      ],
       "asset": "ldn_mitm.zip",
       "asset_kind": "zip",
       "tag_example": "v1.15.0",
@@ -699,7 +990,9 @@
     {
       "name": "Linkalho",
       "repo": "rdmrocha/linkalho",
-      "nacp_name": ["Linkalho"],
+      "nacp_name": [
+        "Linkalho"
+      ],
       "asset": "linkalho.zip",
       "asset_kind": "zip",
       "tag_example": "v2.0.1",
@@ -711,7 +1004,9 @@
     {
       "name": "Lockpick_RCM",
       "repo": "shchmue/Lockpick_RCM",
-      "nacp_name": ["Lockpick_RCM"],
+      "nacp_name": [
+        "Lockpick_RCM"
+      ],
       "asset": "Lockpick_RCM.bin",
       "asset_kind": "bin",
       "tag_example": "v1.9.11",
@@ -723,7 +1018,9 @@
     {
       "name": "melonDS",
       "repo": "ArcDelta/melonDS",
-      "nacp_name": ["melonDS"],
+      "nacp_name": [
+        "melonDS"
+      ],
       "asset": "melonDS.nro",
       "asset_kind": "nro",
       "tag_example": "7.2.1",
@@ -735,7 +1032,9 @@
     {
       "name": "melonDS",
       "repo": "melonDS-emu/melonDS",
-      "nacp_name": ["melonDS"],
+      "nacp_name": [
+        "melonDS"
+      ],
       "asset": "melonDS.nro",
       "asset_kind": "nro",
       "tag_example": "0.9.5",
@@ -747,7 +1046,9 @@
     {
       "name": "mGBA",
       "repo": "mgba-emu/mgba",
-      "nacp_name": ["mGBA"],
+      "nacp_name": [
+        "mGBA"
+      ],
       "asset": "mGBA.nro",
       "asset_kind": "nro",
       "tag_example": "0.10.2",
@@ -759,7 +1060,9 @@
     {
       "name": "MissionControl",
       "repo": "ndeadly/MissionControl",
-      "nacp_name": ["MissionControl"],
+      "nacp_name": [
+        "MissionControl"
+      ],
       "asset": "MissionControl.zip",
       "asset_kind": "zip",
       "tag_example": "v0.11.0",
@@ -771,7 +1074,9 @@
     {
       "name": "Moonlight-NX",
       "repo": "XITRIX/Moonlight-Switch",
-      "nacp_name": ["Moonlight-NX"],
+      "nacp_name": [
+        "Moonlight-NX"
+      ],
       "asset": "Moonlight-NX.nro",
       "asset_kind": "nro",
       "tag_example": "v1.3.4",
@@ -783,7 +1088,10 @@
     {
       "name": "MTG Life Counter",
       "repo": "enzo-beltrami/switch-mtg-life-counter",
-      "nacp_name": ["MTG Life Counter", "switch-mtg-life-counter"],
+      "nacp_name": [
+        "MTG Life Counter",
+        "switch-mtg-life-counter"
+      ],
       "asset": "switch-mtg-life-counter.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -795,7 +1103,10 @@
     {
       "name": "nO mooRe",
       "repo": "TheLogicMaster/nomoore",
-      "nacp_name": ["nO mooRe", "nomoore"],
+      "nacp_name": [
+        "nO mooRe",
+        "nomoore"
+      ],
       "asset": "nomoore.nro",
       "asset_kind": "nro",
       "tag_example": "1.6",
@@ -807,7 +1118,10 @@
     {
       "name": "noled",
       "repo": "kemalsanli/noled",
-      "nacp_name": ["noled", "none"],
+      "nacp_name": [
+        "noled",
+        "none"
+      ],
       "asset": "noled.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.0.0",
@@ -819,7 +1133,9 @@
     {
       "name": "NX Activity Log",
       "repo": "zdm65477730/NX-Activity-Log",
-      "nacp_name": ["NX Activity Log"],
+      "nacp_name": [
+        "NX Activity Log"
+      ],
       "asset": "NX-Activity-Log.nro",
       "asset_kind": "nro",
       "tag_example": "v1.4.1",
@@ -831,7 +1147,10 @@
     {
       "name": "NX Bad Apple",
       "repo": "Meayua/NX-Bad-Apple",
-      "nacp_name": ["NX Bad Apple", "Bad-Apple"],
+      "nacp_name": [
+        "NX Bad Apple",
+        "Bad-Apple"
+      ],
       "asset": "Bad-Apple.nro",
       "asset_kind": "nro",
       "tag_example": "Main",
@@ -843,7 +1162,9 @@
     {
       "name": "NX Card Manager",
       "repo": "carcaschoi/NXCard-Manager",
-      "nacp_name": ["NXCard Manager"],
+      "nacp_name": [
+        "NXCard Manager"
+      ],
       "asset": "NXCard-Manager.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.2",
@@ -855,7 +1176,10 @@
     {
       "name": "NX Dump Tool",
       "repo": "DarkMatterCore/nx-dump-tool",
-      "nacp_name": ["NX Dump Tool", "nx-dump-tool"],
+      "nacp_name": [
+        "NX Dump Tool",
+        "nx-dump-tool"
+      ],
       "asset": "nx-dump-tool.nro",
       "asset_kind": "nro",
       "tag_example": "v2.1.1",
@@ -867,7 +1191,10 @@
     {
       "name": "NX Remote Launcher",
       "repo": "kirankunigiri/nx-remote-launcher",
-      "nacp_name": ["NX Remote Launcher", "NXRemoteLauncher"],
+      "nacp_name": [
+        "NX Remote Launcher",
+        "NXRemoteLauncher"
+      ],
       "asset": "nx-remote-launcher.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.1",
@@ -879,7 +1206,9 @@
     {
       "name": "NX-Bootlogo",
       "repo": "ITTotalJustice/nx-bootlogo",
-      "nacp_name": ["NX-Bootlogo"],
+      "nacp_name": [
+        "NX-Bootlogo"
+      ],
       "asset": "nx-bootlogo.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -891,7 +1220,9 @@
     {
       "name": "NXEngine-EVO",
       "repo": "nxengine/nxengine-evo",
-      "nacp_name": ["NXEngine-EVO"],
+      "nacp_name": [
+        "NXEngine-EVO"
+      ],
       "asset": "nxengine-evo.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -903,7 +1234,9 @@
     {
       "name": "NX-Fetch-Rem",
       "repo": "remn9k/NX-Fetch-Rem",
-      "nacp_name": ["NX-Fetch-Rem"],
+      "nacp_name": [
+        "NX-Fetch-Rem"
+      ],
       "asset": "NX-Fetch-Rem.nro",
       "asset_kind": "nro",
       "tag_example": "0.1.0",
@@ -915,7 +1248,9 @@
     {
       "name": "NX-FPS",
       "repo": "masagrator/NX-FPS",
-      "nacp_name": ["NX-FPS"],
+      "nacp_name": [
+        "NX-FPS"
+      ],
       "asset": "NX-FPS.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.5.0",
@@ -927,7 +1262,10 @@
     {
       "name": "NX-hbmenu",
       "repo": "switchbrew/nx-hbmenu",
-      "nacp_name": ["hbmenu", "Homebrew Menu"],
+      "nacp_name": [
+        "hbmenu",
+        "Homebrew Menu"
+      ],
       "asset": "hbmenu.nro",
       "asset_kind": "nro",
       "tag_example": "v3.6.0",
@@ -939,7 +1277,10 @@
     {
       "name": "NXInput",
       "repo": "Vins98/NXInput",
-      "nacp_name": ["NXInput", "NXInput_Client"],
+      "nacp_name": [
+        "NXInput",
+        "NXInput_Client"
+      ],
       "asset": "NXInput_Client.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0.0",
@@ -951,7 +1292,9 @@
     {
       "name": "NXMP",
       "repo": "proconsule/nxmp",
-      "nacp_name": ["NXMP"],
+      "nacp_name": [
+        "NXMP"
+      ],
       "asset": "nxmp.nro",
       "asset_kind": "nro",
       "tag_example": "v0.8.0",
@@ -963,7 +1306,9 @@
     {
       "name": "NXMTP",
       "repo": "liamdebeasi/NX-MTP",
-      "nacp_name": ["NXMTP"],
+      "nacp_name": [
+        "NXMTP"
+      ],
       "asset": "nxmtp.nro",
       "asset_kind": "nro",
       "tag_example": "v0.1.4",
@@ -975,7 +1320,9 @@
     {
       "name": "nx-ovlloader",
       "repo": "WerWolv/nx-ovlloader",
-      "nacp_name": ["nx-ovlloader"],
+      "nacp_name": [
+        "nx-ovlloader"
+      ],
       "asset": "nx-ovlloader.zip",
       "asset_kind": "zip",
       "tag_example": "v1.0.7",
@@ -987,7 +1334,10 @@
     {
       "name": "NX-Shell",
       "repo": "joel16/NX-Shell",
-      "nacp_name": ["NX-Shell", "NXShell"],
+      "nacp_name": [
+        "NX-Shell",
+        "NXShell"
+      ],
       "asset": "NX-Shell.nro",
       "asset_kind": "nro",
       "tag_example": "v4.0.0",
@@ -999,7 +1349,9 @@
     {
       "name": "NXThemes Installer",
       "repo": "exelix11/SwitchThemeInjector",
-      "nacp_name": ["NXThemesInstaller"],
+      "nacp_name": [
+        "NXThemesInstaller"
+      ],
       "asset": "NXThemesInstaller.nro",
       "asset_kind": "nro",
       "tag_example": "v4.7.1",
@@ -1011,7 +1363,10 @@
     {
       "name": "Open Fodder",
       "repo": "keeganatorr/openfodder-switch",
-      "nacp_name": ["Open Fodder", "openfodder-switch"],
+      "nacp_name": [
+        "Open Fodder",
+        "openfodder-switch"
+      ],
       "asset": "openfodder-switch.nro",
       "asset_kind": "nro",
       "tag_example": "1.4-switch",
@@ -1023,7 +1378,9 @@
     {
       "name": "OpenBOR",
       "repo": "DCurrent/openbor",
-      "nacp_name": ["OpenBOR"],
+      "nacp_name": [
+        "OpenBOR"
+      ],
       "asset": "openbor.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -1035,7 +1392,9 @@
     {
       "name": "OpenTyrian",
       "repo": "opentyrian/opentyrian",
-      "nacp_name": ["OpenTyrian"],
+      "nacp_name": [
+        "OpenTyrian"
+      ],
       "asset": "opentyrian.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -1047,7 +1406,9 @@
     {
       "name": "ovlSysmodules",
       "repo": "ppkantorski/ovlSysmodules",
-      "nacp_name": ["ovlSysmodules"],
+      "nacp_name": [
+        "ovlSysmodules"
+      ],
       "asset": "ovlSysmodules.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.3.1",
@@ -1059,7 +1420,9 @@
     {
       "name": "ParticleFire-NX",
       "repo": "faithvoid/ParticleFire-NX",
-      "nacp_name": ["ParticleFire-NX"],
+      "nacp_name": [
+        "ParticleFire-NX"
+      ],
       "asset": "ParticleFireNX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1071,7 +1434,9 @@
     {
       "name": "Payload Launcher",
       "repo": "retronx-team/payload-launcher",
-      "nacp_name": ["Payload Launcher"],
+      "nacp_name": [
+        "Payload Launcher"
+      ],
       "asset": "payload-launcher.nro",
       "asset_kind": "nro",
       "tag_example": "v3.0.1",
@@ -1083,7 +1448,10 @@
     {
       "name": "Pepper and Carrot",
       "repo": "TheLogicMaster/PepperAndCarrotRunningGame",
-      "nacp_name": ["Pepper and Carrot", "PepperAndCarrotRunningGame"],
+      "nacp_name": [
+        "Pepper and Carrot",
+        "PepperAndCarrotRunningGame"
+      ],
       "asset": "PepperAndCarrotRunningGame.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1095,7 +1463,10 @@
     {
       "name": "Pixel Wheels",
       "repo": "TheLogicMaster/pixelwheels-switchgdx",
-      "nacp_name": ["Pixel Wheels", "pixelwheels"],
+      "nacp_name": [
+        "Pixel Wheels",
+        "pixelwheels"
+      ],
       "asset": "pixelwheels.nro",
       "asset_kind": "nro",
       "tag_example": "v0.22.0",
@@ -1107,7 +1478,9 @@
     {
       "name": "Pong-NX",
       "repo": "Zamacian/Pong-NX",
-      "nacp_name": ["Pong-NX"],
+      "nacp_name": [
+        "Pong-NX"
+      ],
       "asset": "Pong-NX.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -1119,7 +1492,10 @@
     {
       "name": "powder-nx",
       "repo": "VelocityRa/powder-nx",
-      "nacp_name": ["powder-nx", "powder-nx_v1.0"],
+      "nacp_name": [
+        "powder-nx",
+        "powder-nx_v1.0"
+      ],
       "asset": "powder-nx_v1.0.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0",
@@ -1131,7 +1507,9 @@
     {
       "name": "pPlay",
       "repo": "Cpasjuste/pplay",
-      "nacp_name": ["pPlay"],
+      "nacp_name": [
+        "pPlay"
+      ],
       "asset": "pplay.nro",
       "asset_kind": "nro",
       "tag_example": "v3.4",
@@ -1143,7 +1521,9 @@
     {
       "name": "PPSSPP",
       "repo": "hrydgard/ppsspp",
-      "nacp_name": ["PPSSPP"],
+      "nacp_name": [
+        "PPSSPP"
+      ],
       "asset": "ppsspp_switch.zip",
       "asset_kind": "zip",
       "tag_example": "v1.16.6",
@@ -1155,7 +1535,9 @@
     {
       "name": "QuickNTP",
       "repo": "masagrator/QuickNTP",
-      "nacp_name": ["QuickNTP"],
+      "nacp_name": [
+        "QuickNTP"
+      ],
       "asset": "QuickNTP.nro",
       "asset_kind": "nro",
       "tag_example": "v1.1.0",
@@ -1167,7 +1549,10 @@
     {
       "name": "reboottopayloadswitch",
       "repo": "metehankaygsz/reboottopayloadswitch",
-      "nacp_name": ["reboottopayloadswitch", "Reboot"],
+      "nacp_name": [
+        "reboottopayloadswitch",
+        "Reboot"
+      ],
       "asset": "Reboot.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1179,7 +1564,9 @@
     {
       "name": "REminiscence",
       "repo": "cyxdown/reminiscence",
-      "nacp_name": ["REminiscence"],
+      "nacp_name": [
+        "REminiscence"
+      ],
       "asset": "reminiscence.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -1191,7 +1578,9 @@
     {
       "name": "RetroArch",
       "repo": "libretro/RetroArch",
-      "nacp_name": ["RetroArch"],
+      "nacp_name": [
+        "RetroArch"
+      ],
       "asset": "RetroArch.7z",
       "asset_kind": "7z",
       "tag_example": "v1.16.0",
@@ -1203,7 +1592,9 @@
     {
       "name": "ReverseNX-Tool",
       "repo": "masagrator/ReverseNX-Tool",
-      "nacp_name": ["ReverseNX-Tool"],
+      "nacp_name": [
+        "ReverseNX-Tool"
+      ],
       "asset": "ReverseNX-Tool.nro",
       "asset_kind": "nro",
       "tag_example": "v3.1.2",
@@ -1215,7 +1606,9 @@
     {
       "name": "SaltyNX",
       "repo": "masagrator/SaltyNX",
-      "nacp_name": ["SaltyNX"],
+      "nacp_name": [
+        "SaltyNX"
+      ],
       "asset": "SaltyNX.zip",
       "asset_kind": "zip",
       "tag_example": "v0.7.2",
@@ -1227,7 +1620,9 @@
     {
       "name": "ScummVM",
       "repo": "scummvm/scummvm",
-      "nacp_name": ["ScummVM"],
+      "nacp_name": [
+        "ScummVM"
+      ],
       "asset": "scummvm.nro",
       "asset_kind": "nro",
       "tag_example": "v2.8.0",
@@ -1239,7 +1634,10 @@
     {
       "name": "Slay The Switch",
       "repo": "omueller5/SlayTheSwitch",
-      "nacp_name": ["Slay The Switch", "slaytheswitch"],
+      "nacp_name": [
+        "Slay The Switch",
+        "slaytheswitch"
+      ],
       "asset": "slaytheswitch.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -1251,7 +1649,9 @@
     {
       "name": "SMS Plus GX",
       "repo": "libretro/smsplus-gx",
-      "nacp_name": ["SMS Plus GX"],
+      "nacp_name": [
+        "SMS Plus GX"
+      ],
       "asset": "smsplus_libretro_switch.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -1263,7 +1663,9 @@
     {
       "name": "snes9x2010",
       "repo": "libretro/snes9x2010",
-      "nacp_name": ["snes9x2010"],
+      "nacp_name": [
+        "snes9x2010"
+      ],
       "asset": "snes9x2010_libretro_switch.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -1275,7 +1677,9 @@
     {
       "name": "SpaceVue",
       "repo": "esteban-cz/SpaceVue",
-      "nacp_name": ["SpaceVue"],
+      "nacp_name": [
+        "SpaceVue"
+      ],
       "asset": "SpaceVue.nro",
       "asset_kind": "nro",
       "tag_example": "v3.0.1",
@@ -1287,7 +1691,9 @@
     {
       "name": "Sphaira",
       "repo": "ITTotalJustice/Sphaira",
-      "nacp_name": ["Sphaira"],
+      "nacp_name": [
+        "Sphaira"
+      ],
       "asset": "sphaira.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -1299,7 +1705,9 @@
     {
       "name": "Status Monitor Overlay",
       "repo": "masagrator/Status-Monitor-Overlay",
-      "nacp_name": ["Status Monitor Overlay"],
+      "nacp_name": [
+        "Status Monitor Overlay"
+      ],
       "asset": "StatusMonitor.ovl",
       "asset_kind": "ovl",
       "tag_example": "v0.9.1",
@@ -1311,7 +1719,9 @@
     {
       "name": "Switch-90DNS Setter",
       "repo": "megaboy101/switch-90dns-setter",
-      "nacp_name": ["90DNS Setter"],
+      "nacp_name": [
+        "90DNS Setter"
+      ],
       "asset": "90dns-setter.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -1323,7 +1733,9 @@
     {
       "name": "Switchfin",
       "repo": "jlippold/switchfin",
-      "nacp_name": ["Switchfin"],
+      "nacp_name": [
+        "Switchfin"
+      ],
       "asset": "Switchfin.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.1",
@@ -1335,7 +1747,9 @@
     {
       "name": "SwitchLanController",
       "repo": "devnull-tech/SwitchLanController-Client",
-      "nacp_name": ["SwitchLanController"],
+      "nacp_name": [
+        "SwitchLanController"
+      ],
       "asset": "SwitchLanController-Client.nro",
       "asset_kind": "nro",
       "tag_example": "switch_homebrew",
@@ -1347,7 +1761,9 @@
     {
       "name": "sys-botbase",
       "repo": "olliz0r/sys-botbase",
-      "nacp_name": ["sys-botbase"],
+      "nacp_name": [
+        "sys-botbase"
+      ],
       "asset": "sys-botbase.zip",
       "asset_kind": "zip",
       "tag_example": "v2.2",
@@ -1359,7 +1775,9 @@
     {
       "name": "sys-clk",
       "repo": "retronx-team/sys-clk",
-      "nacp_name": ["sys-clk"],
+      "nacp_name": [
+        "sys-clk"
+      ],
       "asset": "sys-clk.zip",
       "asset_kind": "zip",
       "tag_example": "2.0.0-rc4",
@@ -1371,7 +1789,9 @@
     {
       "name": "sys-clk Overlay",
       "repo": "retroNX/sys-clk",
-      "nacp_name": ["sys-clk Overlay"],
+      "nacp_name": [
+        "sys-clk Overlay"
+      ],
       "asset": "sys-clk-overlay.ovl",
       "asset_kind": "ovl",
       "tag_example": "1.0.3",
@@ -1383,7 +1803,9 @@
     {
       "name": "sys-con",
       "repo": "cathery/sys-con",
-      "nacp_name": ["sys-con"],
+      "nacp_name": [
+        "sys-con"
+      ],
       "asset": "sys-con.zip",
       "asset_kind": "zip",
       "tag_example": "v0.6.4",
@@ -1395,7 +1817,9 @@
     {
       "name": "SysDVR",
       "repo": "exelix11/SysDVR",
-      "nacp_name": ["SysDVR"],
+      "nacp_name": [
+        "SysDVR"
+      ],
       "asset": "SysDVR.zip",
       "asset_kind": "zip",
       "tag_example": "v6.0.0",
@@ -1407,7 +1831,9 @@
     {
       "name": "sys-ftpd-light",
       "repo": "cathery/sys-ftpd",
-      "nacp_name": ["sys-ftpd-light"],
+      "nacp_name": [
+        "sys-ftpd-light"
+      ],
       "asset": "sys-ftpd-light.zip",
       "asset_kind": "zip",
       "tag_example": "v1.3.0",
@@ -1419,7 +1845,9 @@
     {
       "name": "sys-hidplus",
       "repo": "ndeadly/sys-hidplus",
-      "nacp_name": ["sys-hidplus"],
+      "nacp_name": [
+        "sys-hidplus"
+      ],
       "asset": "sys-hidplus.zip",
       "asset_kind": "zip",
       "tag_example": "v1.0.0",
@@ -1431,7 +1859,9 @@
     {
       "name": "sysmodule-manager",
       "repo": "ppkantorski/sysmodule-manager",
-      "nacp_name": ["sysmodule-manager"],
+      "nacp_name": [
+        "sysmodule-manager"
+      ],
       "asset": "sysmodule-manager.nro",
       "asset_kind": "nro",
       "tag_example": "v2.0.0",
@@ -1443,7 +1873,9 @@
     {
       "name": "sys-patch",
       "repo": "ITTotalJustice/sys-patch",
-      "nacp_name": ["sys-patch"],
+      "nacp_name": [
+        "sys-patch"
+      ],
       "asset": "sys-patch.zip",
       "asset_kind": "zip",
       "tag_example": "v1.5.1",
@@ -1455,7 +1887,9 @@
     {
       "name": "sys-tune",
       "repo": "HookedBehemoth/sys-tune",
-      "nacp_name": ["sys-tune"],
+      "nacp_name": [
+        "sys-tune"
+      ],
       "asset": "sys-tune.zip",
       "asset_kind": "zip",
       "tag_example": "v1.2.1",
@@ -1467,7 +1901,9 @@
     {
       "name": "Tesla Menu",
       "repo": "WerWolv/Tesla-Menu",
-      "nacp_name": ["Tesla Menu"],
+      "nacp_name": [
+        "Tesla Menu"
+      ],
       "asset": "ovlmenu.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.2.3",
@@ -1479,7 +1915,9 @@
     {
       "name": "Themezer-NX",
       "repo": "suchmememanyskill/themezer-nx",
-      "nacp_name": ["Themezer-NX"],
+      "nacp_name": [
+        "Themezer-NX"
+      ],
       "asset": "themezer-nx.nro",
       "asset_kind": "nro",
       "tag_example": "v1.2.0",
@@ -1491,7 +1929,10 @@
     {
       "name": "TicTacToeNX",
       "repo": "lorrdfarquad/TikTacToeNX",
-      "nacp_name": ["TicTacToeNX", "TicTacToeNx"],
+      "nacp_name": [
+        "TicTacToeNX",
+        "TicTacToeNx"
+      ],
       "asset": "TicTacToeNx.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1503,7 +1944,10 @@
     {
       "name": "TIL NX",
       "repo": "Manurocker95/TIL_NX",
-      "nacp_name": ["TIL NX", "TIL_NX"],
+      "nacp_name": [
+        "TIL NX",
+        "TIL_NX"
+      ],
       "asset": "TIL_NX.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1515,7 +1959,9 @@
     {
       "name": "TinLeaf",
       "repo": "SatatCoffee/TinLeaf",
-      "nacp_name": ["TinLeaf"],
+      "nacp_name": [
+        "TinLeaf"
+      ],
       "asset": "TinLeaf.nro",
       "asset_kind": "nro",
       "tag_example": "v1.4.2",
@@ -1527,7 +1973,9 @@
     {
       "name": "TinWoo Installer",
       "repo": "mrdude2478/TinWoo-Installer",
-      "nacp_name": ["TinWoo Installer"],
+      "nacp_name": [
+        "TinWoo Installer"
+      ],
       "asset": "TinWoo-Installer.nro",
       "asset_kind": "nro",
       "tag_example": "v1.0.0",
@@ -1539,7 +1987,10 @@
     {
       "name": "Touch Screen",
       "repo": "Dontwait00/touch-screen-modified",
-      "nacp_name": ["Touch Screen", "touch-screen"],
+      "nacp_name": [
+        "Touch Screen",
+        "touch-screen"
+      ],
       "asset": "touch-screen.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1551,7 +2002,10 @@
     {
       "name": "TriPeaks",
       "repo": "TheLogicMaster/tripeaks-switchgdx",
-      "nacp_name": ["TriPeaks", "tripeaks-gdx"],
+      "nacp_name": [
+        "TriPeaks",
+        "tripeaks-gdx"
+      ],
       "asset": "tripeaks-gdx.nro",
       "asset_kind": "nro",
       "tag_example": "1.0.1",
@@ -1563,7 +2017,9 @@
     {
       "name": "TriPlayer",
       "repo": "tallbl0nde/TriPlayer",
-      "nacp_name": ["TriPlayer"],
+      "nacp_name": [
+        "TriPlayer"
+      ],
       "asset": "TriPlayer.zip",
       "asset_kind": "zip",
       "tag_example": "v1.1.1",
@@ -1575,7 +2031,9 @@
     {
       "name": "Uae4All2",
       "repo": "ChuiZard/uae4all2",
-      "nacp_name": ["Uae4All2"],
+      "nacp_name": [
+        "Uae4All2"
+      ],
       "asset": "uae4all2.nro",
       "asset_kind": "nro",
       "tag_example": "unverified",
@@ -1587,7 +2045,9 @@
     {
       "name": "uLaunch",
       "repo": "tallblondedude/uLaunch",
-      "nacp_name": ["uLaunch"],
+      "nacp_name": [
+        "uLaunch"
+      ],
       "asset": "uLaunch.zip",
       "asset_kind": "zip",
       "tag_example": "v1.0.0",
@@ -1599,7 +2059,9 @@
     {
       "name": "Ultrahand Overlay",
       "repo": "ppkantorski/Ultrahand-Overlay",
-      "nacp_name": ["Ultrahand Overlay"],
+      "nacp_name": [
+        "Ultrahand Overlay"
+      ],
       "asset": "Ultrahand.ovl",
       "asset_kind": "ovl",
       "tag_example": "v1.2.0",
@@ -1611,7 +2073,9 @@
     {
       "name": "UMSDPong",
       "repo": "Kriperovich2/umsdpong-switch",
-      "nacp_name": ["UMSDPong"],
+      "nacp_name": [
+        "UMSDPong"
+      ],
       "asset": "ULTRA.MEGA.SUPER.DUPER.PONG.nro",
       "asset_kind": "nro",
       "tag_example": "release",
@@ -1623,7 +2087,9 @@
     {
       "name": "Unlucky",
       "repo": "TheLogicMaster/Unlucky",
-      "nacp_name": ["Unlucky"],
+      "nacp_name": [
+        "Unlucky"
+      ],
       "asset": "Unlucky.nro",
       "asset_kind": "nro",
       "tag_example": "1.0",
@@ -1635,7 +2101,10 @@
     {
       "name": "VR POC",
       "repo": "GreenDog72/nx-vr",
-      "nacp_name": ["VR POC", "nx-vr"],
+      "nacp_name": [
+        "VR POC",
+        "nx-vr"
+      ],
       "asset": "nx-vr.nro",
       "asset_kind": "nro",
       "tag_example": "0.0.1",
