@@ -713,6 +713,14 @@ MainLayout::MainLayout() : Layout::Layout() {
     this->list = TableList::New(0, list_y, sw, row_h, rows);
     this->Add(this->list);
 
+    s32 list_bottom = list_y + rows * row_h;
+    s32 footer_top = sh - footer_h;
+    if (list_bottom < footer_top) {
+        auto fill = pu::ui::elm::Rectangle::New(0, list_bottom, sw,
+                        footer_top - list_bottom, pu::ui::Color(22, 23, 27, 255));
+        this->Add(fill);
+    }
+
     this->footer = pu::ui::elm::Rectangle::New(0, sh - footer_h, sw, footer_h,
                                                pu::ui::Color(22, 42, 80, 255));
     this->Add(this->footer);
@@ -2040,25 +2048,6 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     if (down & HidNpadButton_A) {
         if (i < 0 || i >= g_cfg.count) {
             return;
-        }
-        // Info dialog before the action menu
-        {
-            const App &a = g_cfg.apps[i];
-            char info[1024];
-            snprintf(info, sizeof(info),
-                     "Repo: %s\nInstalled: %s\nLatest: %s\nPath: %s\n"
-                     "Kind: %s  Asset: %s\nPinned: %s",
-                     a.repo,
-                     a.version[0] ? a.version : "-",
-                     g_latest[i].empty() ? "-" : g_latest[i].c_str(),
-                     a.path, a.kind,
-                     a.asset[0] ? a.asset : "(default)",
-                     a.pinned ? "yes" : "no");
-            int r = this->CreateShowDialog(a.name, info, {"Actions", "Close"},
-                                           true);
-            if (r != 0) {
-                return;
-            }
         }
         bool has_backup = backup_exists(g_cfg.apps[i].repo);
         bool pinned = g_cfg.apps[i].pinned;
