@@ -709,17 +709,10 @@ MainLayout::MainLayout() : Layout::Layout() {
     const s32 footer_h = 64;
     const s32 list_y = 118;
     const s32 row_h = 84;
-    const s32 rows = (sh - list_y - footer_h) / row_h;
+    const s32 avail = sh - list_y - footer_h;
+    const s32 rows = avail / row_h + (avail % row_h ? 1 : 0);
     this->list = TableList::New(0, list_y, sw, row_h, rows);
     this->Add(this->list);
-
-    s32 list_bottom = list_y + rows * row_h;
-    s32 footer_top = sh - footer_h;
-    if (list_bottom < footer_top) {
-        auto fill = pu::ui::elm::Rectangle::New(0, list_bottom, sw,
-                        footer_top - list_bottom, pu::ui::Color(22, 23, 27, 255));
-        this->Add(fill);
-    }
 
     this->footer = pu::ui::elm::Rectangle::New(0, sh - footer_h, sw, footer_h,
                                                pu::ui::Color(22, 42, 80, 255));
@@ -1865,16 +1858,37 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             s32 sel = g_layout->Sel();
             if (sel >= 0 && sel < g_catalog.count) {
                 const CatalogEntry *e = &g_catalog.items[sel];
-                bool tracked = apps_find(&g_cfg, e->repo) >= 0;
+                int tidx = apps_find(&g_cfg, e->repo);
+                bool tracked = tidx >= 0;
                 char info[1024];
                 snprintf(info, sizeof(info),
                          "Repo: %s\nPath: %s\nKind: %s\nAsset: %s\n"
-                         "Prerelease: %s\nStatus: %s",
+                         "Prerelease: %s",
                          e->repo, e->path, e->kind,
                          e->asset[0] ? e->asset : "(default)",
-                         e->prerelease ? "yes" : "no",
-                         tracked ? "tracked" : "not tracked");
-                this->CreateShowDialog(e->name, info, {"OK"}, true);
+                         e->prerelease ? "yes" : "no");
+                std::string action = tracked ? "Untrack" : "Track";
+                int r = this->CreateShowDialog(e->name, info,
+                            {action, "Close"}, true);
+                if (r == 0) {
+                    if (tracked) {
+                        excludes_add(&g_excludes, e->repo);
+                        excludes_save(&g_excludes);
+                        apps_remove(&g_cfg, tidx);
+                        apps_save(&g_cfg);
+                        seed_states_from_cache();
+                        this->RefreshCatalog();
+                        this->Toast("Untracked");
+                    } else {
+                        if (apps_add(&g_cfg, e->name, e->repo, e->path,
+                                     e->asset, e->kind, e->prerelease)) {
+                            apps_save(&g_cfg);
+                            seed_states_from_cache();
+                            this->RefreshCatalog();
+                            this->Toast("Tracked");
+                        }
+                    }
+                }
             }
         }
         return;
