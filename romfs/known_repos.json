@@ -1,6 +1,20 @@
 {
   "apps": [
     {
+      "name": "tico",
+      "nacp_name": [
+        "tico"
+      ],
+      "repo": "ticohq/tico",
+      "asset": "tico.nro",
+      "asset_kind": "nro",
+      "tag_example": "0.7.3",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/tico/tico.nro"
+    },
+    {
       "name": "SimpleModDownloader",
       "nacp_name": [
         "SimpleModDownloader"
