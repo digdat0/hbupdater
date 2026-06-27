@@ -1,56 +1,77 @@
 # Homebrew Updater (HBUpdater)
 
-A small Nintendo Switch homebrew app that keeps your **other** homebrew up to
-date. Track each app by its GitHub repo (`owner/name`) and the `.nro` path on
-your SD card; HBUpdater checks each repo's latest release and overwrites the
-`.nro` in place when a newer version is available. Built with devkitPro / libnx
-and the [Plutonium](https://github.com/XorTroll/Plutonium) UI.
-
-> Early scaffold. It only touches the `.nro` files you tell it to, and only
-> downloads release assets from the GitHub repos you list. Use at your own risk.
+A Nintendo Switch homebrew app that keeps your **other** homebrew up to date.
+HBUpdater scans your SD card for installed `.nro` apps, matches them against a
+catalog of known GitHub repos, and lets you check for updates and install them
+in place. Built with devkitPro / libnx and
+[Plutonium](https://github.com/XorTroll/Plutonium) UI.
 
 ---
 
-## Features (0.1.0)
+## Features
 
-- Track a list of homebrew apps: **GitHub `owner/name`** + the **`.nro` path**.
-- **Check** each app against its latest GitHub release (tag vs. last installed).
-- **Update** in place when a newer release is available — downloads the release's
-  `.nro` asset and overwrites the file.
-- Status per app: up to date / update available / not checked / failed.
-- Config stored at `sdmc:/switch/HBUpdater/apps.json` (editable by hand).
+- **Auto-detect installed apps** — scans the SD for `.nro` files and matches
+  them to a catalog of known GitHub repos. No manual setup needed.
+- **Check & update** — checks each app's latest GitHub release and downloads
+  the new asset in place (`.nro`, `.ovl`, `.bin`, or `.zip`).
+- **Background worker** — all network I/O runs on a worker thread; the UI
+  stays responsive with live progress.
+- **Catalog system** — a bundled catalog of known repos ships with the app;
+  OTA catalog updates pull the latest list from GitHub.
+- **Pin / hold version** — pin an app to skip it during check-all.
+- **Search / filter** — press Y on the home screen to filter by name; B clears.
+- **Pre-update diff summary** — before installing, a dialog shows installed vs
+  latest version, asset size, kind, and target path.
+- **Update history timeline** — a parsed, reverse-chronological view of every
+  update you've performed (Settings → View logs → Update history).
+- **Contextual footer** — the home screen footer color-codes itself: green when
+  all apps are up to date, amber when updates are available, red on failures.
+- **Exclude / re-include** — hide apps from the home list without deleting
+  them; restore anytime from Settings → Excluded apps.
+- **Backup & revert** — automatic pre-update snapshots let you roll back to any
+  prior version. Manage per-app or browse all backups.
+- **Self-update** — HBUpdater can update itself from its own GitHub releases.
+- **Manual repo add** — track any GitHub repo by entering `owner/repo` in
+  Settings, even if it isn't in the catalog.
+- **GitHub token** — paste a personal access token in Settings to raise the API
+  rate limit from 60 to 5,000 requests/hour.
+- **File install controls** — overlays, sysmodules, and payloads are gated
+  behind opt-in toggles in Settings → File install.
+- **Sorted lists** — catalog, excluded, and home lists are sorted A–Z.
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| D-pad / left stick | move (hold to repeat) |
-| A | check the selected app, and offer to update if newer |
-| X | check all apps |
-| Y | add an app (repo + path + name) |
-| − | stop tracking the selected app |
-| ZL / ZR | page |
-| + | exit |
+| Key | Home | Other screens |
+|-----|------|---------------|
+| A | action menu (check, update, pin, backups, reinstall) | select / info |
+| X | check all apps | — |
+| Y | search / filter by name | — |
+| B | clear filter (or no-op) | back |
+| R | open settings | — |
+| − | exclude selected app | — |
+| ZL / ZR | page up / down | page up / down |
+| + | exit | exit |
 
 ## Install
 
 1. Copy `HBUpdater.nro` to `sdmc:/switch/HBUpdater/HBUpdater.nro`.
 2. Launch from the homebrew menu.
 
-## apps.json
+On first launch HBUpdater scans your SD, matches installed apps to the catalog,
+and offers to check for updates.
 
-```json
-{
-  "apps": [
-    { "name": "My App", "repo": "owner/name",
-      "path": "sdmc:/switch/MyApp/MyApp.nro", "version": "" }
-  ]
-}
-```
+## Configuration
 
-- `repo` — GitHub `owner/name`; its **latest release** must attach a `.nro`.
-- `path` — the `.nro` on your SD card that gets overwritten.
-- `version` — last-installed release tag (HBUpdater fills this in after updating).
+Config lives at `sdmc:/switch/HBUpdater/`:
+
+| File | Purpose |
+|------|---------|
+| `apps.json` | tracked apps (auto-managed, hand-editable) |
+| `settings.json` | preferences, GitHub token, toggle states |
+| `excludes.json` | repos hidden from the home list |
+| `catalog.json` | OTA catalog cache (auto-updated) |
+| `history.log` | update history (append-only) |
+| `debug.log` | network/install debug log |
 
 ## Building from source
 
@@ -72,14 +93,6 @@ dkp-pacman -S switch-curl switch-zlib switch-sdl2 switch-sdl2_ttf \
 
 > Networking (GitHub API + downloads) uses the libnx `ssl` backend and only
 > works on **real hardware** — emulators that stub `ssl` will fail HTTPS.
-
-## Roadmap / TODO
-
-- Run network checks/downloads on a background thread (the UI currently blocks
-  during a check/update — same pattern already solved in TicoDL+).
-- Self-update HBUpdater itself (the plumbing — `argv[0]` launch path, update
-  endpoint — is already stubbed in).
-- Optional: keep a `.previous` backup before overwriting; "update all".
 
 ## License
 

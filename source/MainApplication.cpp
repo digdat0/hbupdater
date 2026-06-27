@@ -38,7 +38,8 @@ static std::string g_launch_path;
 
 static Catalog g_catalog;        // bundled known-apps list (romfs)
 // 0=home, 1=catalog, 3=settings, 4=log-picker, 5=log-contents,
-// 6=manage-backups, 7=excluded, 8=file-install, 9=advanced, 10=all-backups
+// 6=manage-backups, 7=excluded, 8=file-install, 9=advanced, 10=all-backups,
+// 11=history-timeline
 static int g_mode = 0;
 static s32 g_list_sel = 0;       // remembered tracked-list selection
 
@@ -753,6 +754,9 @@ void MainLayout::SetStatus(const std::string &t) {
     const s32 sw = (s32)pu::ui::render::ScreenWidth;
     this->status->SetX(sw - 30 - this->status->GetWidth());
 }
+void MainLayout::SetFooterColor(pu::ui::Color clr) {
+    this->footer->SetColor(clr);
+}
 void MainLayout::SetFooter(const std::string &t) {
     std::vector<std::string> segs;
     size_t i = 0;
@@ -869,6 +873,22 @@ void MainApplication::Refresh() {
     g_layout->SetStatus(st);
     g_layout->SetFooter("A open  X check all  Y search  R settings  "
                         "- exclude  ZL/ZR page  + exit");
+    bool any_fail = false;
+    for (int j = 0; j < g_cfg.count; j++) {
+        if (g_state[j] == 3) { any_fail = true; break; }
+    }
+    bool all_checked = (g_cfg.count > 0);
+    for (int j = 0; j < g_cfg.count && all_checked; j++) {
+        if (g_state[j] == 0) all_checked = false;
+    }
+    if (any_fail)
+        g_layout->SetFooterColor(pu::ui::Color(60, 28, 28, 255));
+    else if (outdated > 0)
+        g_layout->SetFooterColor(pu::ui::Color(52, 42, 18, 255));
+    else if (all_checked)
+        g_layout->SetFooterColor(pu::ui::Color(18, 42, 32, 255));
+    else
+        g_layout->SetFooterColor(pu::ui::Color(22, 42, 80, 255));
     g_layout->SetColumns("Name", "Installed", "Update");
 
     g_filt_map.clear();
@@ -1042,11 +1062,25 @@ void MainApplication::Tick() {
                 return;
             }
             const char *verb = have_update ? "Update " : "Reinstall ";
-            std::string msg = std::string(verb) + g_cfg.apps[idx].name + " to " +
-                              g_latest[idx] + "?";
-            if (strcmp(kind, "zip") == 0) {
-                msg += "\n(extracts to SD root)";
+            std::string msg = std::string(verb) + g_cfg.apps[idx].name + "?\n\n";
+            const char *iv = g_cfg.apps[idx].version;
+            msg += std::string("Installed: ") + (iv[0] ? iv : "(unknown)") + "\n";
+            msg += std::string("Latest:    ") + g_latest[idx] + "\n";
+            msg += std::string("Kind:      ") + kind;
+            if (g_asset_size[idx] > 0) {
+                char sz[32];
+                if (g_asset_size[idx] >= (1024ULL * 1024))
+                    snprintf(sz, sizeof(sz), "  (%.1f MB)",
+                             (double)g_asset_size[idx] / (1024.0 * 1024.0));
+                else
+                    snprintf(sz, sizeof(sz), "  (%llu KB)",
+                             (unsigned long long)(g_asset_size[idx] / 1024));
+                msg += sz;
             }
+            if (strcmp(kind, "zip") == 0)
+                msg += "\n\nExtracts to SD root (multiple files)";
+            else
+                msg += std::string("\nPath: ") + basename_of(g_cfg.apps[idx].path);
             if (this->Confirm(have_update ? "Update" : "Reinstall", msg)) {
                 if (!start_job(JOB_DOWNLOAD, idx)) {
                     this->ToastErr("Busy");
@@ -1315,6 +1349,7 @@ void MainApplication::OpenSettings() {
 void MainApplication::RefreshSettings() {
     g_layout->SetTitle("Settings");
     g_layout->SetStatus("");
+    g_layout->SetFooterColor(pu::ui::Color(22, 42, 80, 255));
     g_layout->SetFooter("A select  B back  + exit");
     g_layout->SetColumns("", "", "");
     s32 keep = g_layout->Sel();
@@ -1518,6 +1553,82 @@ void MainApplication::OpenLog(int idx) {
     snprintf(st, sizeof(st), "%d lines", lines);
     g_layout->SetStatus(st);
     g_layout->SetSel(g_layout->Count() - 1); // jump to the newest (bottom)
+}
+
+// ---- update history timeline (mode 11) ------------------------------------
+void MainApplication::OpenHistory() {
+    g_logmenu_sel = g_layout->Sel();
+    g_mode = 11;
+    g_layout->SetSel(0);
+    this->RefreshHistory();
+}
+
+void MainApplication::RefreshHistory() {
+    g_layout->SetTitle("Update history");
+    g_layout->SetFooter("B back  ZL/ZR page  + exit");
+    g_layout->SetColumns("App", "Update", "When");
+    g_layout->ClearList();
+    g_layout->SetFooterColor(pu::ui::Color(22, 42, 80, 255));
+    const pu::ui::Color name_clr(232, 234, 240, 255);
+    const pu::ui::Color dim_clr(170, 175, 185, 255);
+    const pu::ui::Color green(130, 225, 150, 255);
+
+    long sz = file_size(HISTORY_LOG);
+    if (sz <= 0) {
+        g_layout->SetStatus("empty");
+        g_layout->AddRow3("(no updates yet)", "", "", dim_clr, dim_clr, dim_clr);
+        g_layout->SetSel(0);
+        return;
+    }
+    std::string text = read_tail(HISTORY_LOG, 200000);
+    // Parse lines: [YYYY-MM-DD HH:MM] AppName  oldver -> newver  (kind=..., ...)
+    // We display in reverse chronological order (newest first).
+    struct HistEntry { std::string app, change, when; };
+    std::vector<HistEntry> entries;
+    size_t pos = 0;
+    while (pos < text.size()) {
+        size_t nl = text.find('\n', pos);
+        size_t end = (nl == std::string::npos) ? text.size() : nl;
+        std::string line = text.substr(pos, end - pos);
+        pos = (nl == std::string::npos) ? text.size() : nl + 1;
+        if (line.size() < 3 || line[0] != '[') continue;
+        if (line.size() > 4 && line[0] == ' ') continue; // indented detail line
+        size_t cb = line.find(']');
+        if (cb == std::string::npos || cb < 2) continue;
+        std::string when = line.substr(1, cb - 1);
+        // Trim to MM-DD HH:MM if full timestamp
+        if (when.size() >= 16)
+            when = when.substr(5, 11);
+        size_t namestart = cb + 1;
+        while (namestart < line.size() && line[namestart] == ' ') namestart++;
+        // Find "  oldver -> newver" (double-space separated)
+        size_t dsep = line.find("  ", namestart);
+        std::string app, change;
+        if (dsep != std::string::npos) {
+            app = line.substr(namestart, dsep - namestart);
+            size_t cs = dsep + 2;
+            size_t paren = line.find("  (", cs);
+            change = (paren != std::string::npos)
+                         ? line.substr(cs, paren - cs)
+                         : line.substr(cs);
+        } else {
+            app = line.substr(namestart);
+        }
+        entries.push_back({app, change, when});
+    }
+    // Reverse: newest first
+    std::reverse(entries.begin(), entries.end());
+    char st[32];
+    snprintf(st, sizeof(st), "%d updates", (int)entries.size());
+    g_layout->SetStatus(st);
+    if (entries.empty()) {
+        g_layout->AddRow3("(no updates yet)", "", "", dim_clr, dim_clr, dim_clr);
+    } else {
+        for (auto &e : entries) {
+            g_layout->AddRow3(e.app, e.change, e.when, name_clr, green, dim_clr);
+        }
+    }
+    g_layout->SetSel(0);
 }
 
 // ---- excluded apps (opt-out manager) --------------------------------------
@@ -2109,7 +2220,23 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             this->RefreshSettings();
             g_layout->SetSel(g_settings_sel);
         } else if (down & HidNpadButton_A) {
-            this->OpenLog(g_layout->Sel());
+            int logsel = g_layout->Sel();
+            if (logsel == 0) {
+                this->OpenHistory();
+            } else {
+                this->OpenLog(logsel);
+            }
+        }
+        return;
+    }
+
+    // ---- update history timeline ----
+    if (g_mode == 11) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
+        if (down & HidNpadButton_B) {
+            g_mode = 4;
+            this->RefreshLogMenu();
+            g_layout->SetSel(g_logmenu_sel);
         }
         return;
     }

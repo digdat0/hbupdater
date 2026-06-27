@@ -23,6 +23,7 @@ class MainLayout : public pu::ui::Layout {
     void SetTitle(const std::string &t);
     void SetStatus(const std::string &t);
     void SetFooter(const std::string &t);
+    void SetFooterColor(pu::ui::Color clr);
     void ClearList();
     void SetColumns(const std::string &a, const std::string &b,
                     const std::string &c);
@@ -84,6 +85,8 @@ class MainApplication : public pu::ui::Application {
     void OpenLogs();             // settings -> log picker
     void RefreshLogMenu();       // rebuild the log-picker list
     void OpenLog(int idx);       // display one log file's contents
+    void OpenHistory();          // parsed update history timeline
+    void RefreshHistory();       // rebuild the history timeline
 
     void OpenBackups(int appidx); // manage an app's backup snapshots
     void RefreshBackups();        // rebuild the backup list
