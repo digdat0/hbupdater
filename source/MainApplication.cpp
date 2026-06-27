@@ -60,6 +60,7 @@ static void scan_backup_dirs();          // forward decl
 
 static std::string g_filter;         // home list search filter ("" = none)
 static std::vector<int> g_filt_map;  // filtered row index -> g_cfg index
+static std::vector<int> g_cat_order; // sorted catalog display order
 
 static bool show_keyboard(const char *header, const char *guide,
                            const char *initial, char *out, size_t outsz) {
@@ -1186,30 +1187,32 @@ void MainApplication::RefreshCatalog() {
     g_layout->SetFooter("A info  B back  ZL/ZR page  + exit");
     g_layout->SetColumns("Name", "Kind", "Status");
 
+    g_cat_order.clear();
+    for (int i = 0; i < g_catalog.count; i++) g_cat_order.push_back(i);
+    std::sort(g_cat_order.begin(), g_cat_order.end(),
+              [](int a, int b) {
+                  return strcasecmp(g_catalog.items[a].name,
+                                   g_catalog.items[b].name) < 0;
+              });
+
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
-    for (int i = 0; i < g_catalog.count; i++) {
-        const CatalogEntry *e = &g_catalog.items[i];
-        bool tracked = false;
-        for (int j = 0; j < g_cfg.count; j++) {
-            if (strcasecmp(g_cfg.apps[j].repo, e->repo) == 0) {
-                tracked = true;
-                break;
-            }
-        }
+    for (int ci : g_cat_order) {
+        const CatalogEntry *e = &g_catalog.items[ci];
+        bool tracked = (apps_find(&g_cfg, e->repo) >= 0);
         std::string status;
         pu::ui::Color rc;
         if (tracked) {
             status = "tracked";
-            rc = pu::ui::Color(130, 225, 150, 255); // green
+            rc = pu::ui::Color(130, 225, 150, 255);
         } else if (kind_installable(e->kind)) {
             status = "addable";
             rc = dim_clr;
         } else {
             status = "check only";
-            rc = pu::ui::Color(240, 210, 120, 255); // amber
+            rc = pu::ui::Color(240, 210, 120, 255);
         }
         g_layout->AddRow3(e->name, e->kind, status, name_clr, dim_clr, rc);
     }
@@ -1525,13 +1528,15 @@ void MainApplication::OpenExcluded() {
     this->RefreshExcluded();
 }
 
+static std::vector<int> g_exc_order; // sorted excluded-list display order
+
 void MainApplication::RefreshExcluded() {
     g_layout->SetTitle("Excluded apps");
     char st[40];
     snprintf(st, sizeof(st), "%d excluded", g_excludes.count);
     g_layout->SetStatus(st);
     g_layout->SetFooter("A re-include  B back  + exit");
-    g_layout->ClearColumns();
+    g_layout->SetColumns("Name", "", "Repo");
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
@@ -1539,19 +1544,38 @@ void MainApplication::RefreshExcluded() {
         g_layout->AddRow3("(nothing excluded)", "", "", dim_clr, dim_clr,
                           dim_clr);
     } else {
-        for (int i = 0; i < g_excludes.count; i++) {
-            g_layout->AddRow3(g_excludes.repos[i], "", "", name_clr, dim_clr,
-                              dim_clr);
+        g_exc_order.clear();
+        for (int i = 0; i < g_excludes.count; i++) g_exc_order.push_back(i);
+        std::sort(g_exc_order.begin(), g_exc_order.end(),
+                  [](int a, int b) {
+                      return strcasecmp(g_excludes.repos[a],
+                                       g_excludes.repos[b]) < 0;
+                  });
+        for (int ei : g_exc_order) {
+            const char *repo = g_excludes.repos[ei];
+            std::string name;
+            for (int c = 0; c < g_catalog.count; c++) {
+                if (strcasecmp(g_catalog.items[c].repo, repo) == 0) {
+                    name = g_catalog.items[c].name;
+                    break;
+                }
+            }
+            if (name.empty()) {
+                const char *sl = strrchr(repo, '/');
+                name = sl ? sl + 1 : repo;
+            }
+            g_layout->AddRow3(name, "", repo, name_clr, dim_clr, dim_clr);
         }
     }
     g_layout->SetSel(0);
 }
 
 void MainApplication::Unexclude() {
-    int i = g_layout->Sel();
-    if (i < 0 || i >= g_excludes.count) {
+    int si = g_layout->Sel();
+    if (si < 0 || si >= (int)g_exc_order.size()) {
         return;
     }
+    int i = g_exc_order[si];
     std::string repo = g_excludes.repos[i];
     excludes_remove_at(&g_excludes, i);
     excludes_save(&g_excludes);
@@ -1903,8 +1927,8 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             this->CloseCatalog();
         } else if (down & HidNpadButton_A) {
             s32 sel = g_layout->Sel();
-            if (sel >= 0 && sel < g_catalog.count) {
-                const CatalogEntry *e = &g_catalog.items[sel];
+            if (sel >= 0 && sel < (int)g_cat_order.size()) {
+                const CatalogEntry *e = &g_catalog.items[g_cat_order[sel]];
                 int tidx = apps_find(&g_cfg, e->repo);
                 bool tracked = tidx >= 0;
                 char info[1024];
@@ -2207,6 +2231,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                 excludes_save(&g_excludes);
                 apps_remove(&g_cfg, i);
                 apps_save(&g_cfg);
+                seed_states_from_cache();
                 this->Refresh();
                 this->Toast("Excluded");
             }
