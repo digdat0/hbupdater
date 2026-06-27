@@ -121,7 +121,26 @@ bool catalog_load(Catalog *cat) {
     return load_from(cat, CATALOG_BUNDLED);
 }
 
-bool catalog_update(void) {
+static bool files_equal(const char *a, const char *b) {
+    FILE *fa = fopen(a, "rb");
+    FILE *fb = fopen(b, "rb");
+    if (!fa || !fb) { if (fa) fclose(fa); if (fb) fclose(fb); return false; }
+    fseek(fa, 0, SEEK_END); long sa = ftell(fa); rewind(fa);
+    fseek(fb, 0, SEEK_END); long sb = ftell(fb); rewind(fb);
+    if (sa != sb || sa <= 0) { fclose(fa); fclose(fb); return false; }
+    bool eq = true;
+    char ba[4096], bb[4096];
+    while (sa > 0) {
+        size_t n = sa < (long)sizeof(ba) ? (size_t)sa : sizeof(ba);
+        if (fread(ba, 1, n, fa) != n || fread(bb, 1, n, fb) != n ||
+            memcmp(ba, bb, n) != 0) { eq = false; break; }
+        sa -= (long)n;
+    }
+    fclose(fa); fclose(fb);
+    return eq;
+}
+
+int catalog_update(void) {
     fs_mkdir_p(CONFIG_DIR);
     char tmp[256];
     snprintf(tmp, sizeof(tmp), "%s.tmp", CATALOG_CACHE);
@@ -140,10 +159,8 @@ bool catalog_update(void) {
             got);
     if (!dok) {
         remove(tmp);
-        return false;
+        return 0;
     }
-    /* Validate before promoting: a truncated/garbage download must not replace a
-     * working catalog. Only accept a file that parses to >=1 entry. */
     Catalog test;
     bool ok = load_from(&test, tmp);
     int n = test.count;
@@ -151,11 +168,16 @@ bool catalog_update(void) {
     net_log("  validate -> %s (%d records)", ok ? "ok" : "FAIL", n);
     if (!ok) {
         remove(tmp);
-        return false;
+        return 0;
+    }
+    if (files_equal(tmp, CATALOG_CACHE)) {
+        net_log("  unchanged (same as cached)");
+        remove(tmp);
+        return 2;
     }
     bool mv = fs_move(tmp, CATALOG_CACHE);
     net_log("  saved -> %s (%s)", mv ? "ok" : "FAIL", CATALOG_CACHE);
-    return mv;
+    return mv ? 1 : 0;
 }
 
 void catalog_free(Catalog *cat) {

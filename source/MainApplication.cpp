@@ -255,7 +255,7 @@ static bool g_force = false;             // reinstall even if up to date
 static char g_revert_prior[48];          // version restored by a revert job
 static char g_revert_id[40];             // which snapshot a revert job restores
 static char g_fail_msg[40];              // worker-set failure reason ("" = none)
-static bool g_catalog_ok = false;        // JOB_CATALOG result
+static int g_catalog_result = 0;         // JOB_CATALOG: 0=fail 1=updated 2=unchanged
 static char g_self_tag[64];              // self-update: latest HBUpdater tag
 static std::string g_self_url;           // self-update: .nro asset url
 static uint64_t g_self_size = 0;         // self-update: expected asset size
@@ -478,7 +478,7 @@ static void job_download(int idx) {
 }
 
 // Fetch the latest catalog from the repo into the SD cache. Worker only.
-static void job_catalog(void) { g_catalog_ok = catalog_update(); }
+static void job_catalog(void) { g_catalog_result = catalog_update(); }
 
 // Check HBUpdater's own repo for a newer release. Worker only.
 static void job_selfcheck(void) {
@@ -726,14 +726,14 @@ MainLayout::MainLayout() : Layout::Layout() {
     this->Add(this->status);
 
     const s32 footer_h = 64;
+    const s32 info_h = 36;
     const s32 list_y = 118;
     const s32 row_h = 84;
-    const s32 avail = sh - list_y - footer_h;
+    const s32 avail = sh - list_y - footer_h - info_h;
     const s32 rows = avail / row_h + (avail % row_h ? 1 : 0);
     this->list = TableList::New(0, list_y, sw, row_h, rows);
     this->Add(this->list);
 
-    const s32 info_h = 36;
     this->info_bar = pu::ui::elm::Rectangle::New(0, sh - footer_h - info_h, sw,
                                                   info_h,
                                                   pu::ui::Color(16, 17, 21, 255));
@@ -892,7 +892,7 @@ void MainApplication::Refresh() {
     }
     g_layout->SetStatus(st);
     g_layout->SetFooter("A open  X check all  Y search  R settings  "
-                        "- exclude  ZL/ZR page  + exit");
+                        "- exclude  + exit");
     bool any_fail = false;
     for (int j = 0; j < g_cfg.count; j++) {
         if (g_state[j] == 3) { any_fail = true; break; }
@@ -1176,13 +1176,15 @@ void MainApplication::Tick() {
         return;
     }
     if (job == JOB_CATALOG) {
-        if (g_catalog_ok) {
+        if (g_catalog_result == 1) {
             catalog_free(&g_catalog);
             catalog_load(&g_catalog);
             this->ReconcileInstalled();
             char m[48];
             snprintf(m, sizeof(m), "Catalog updated: %d apps", g_catalog.count);
             this->Toast(m);
+        } else if (g_catalog_result == 2) {
+            this->Toast("Catalog already up to date");
         } else {
             this->ToastErr("Catalog update failed");
         }
@@ -1257,7 +1259,7 @@ void MainApplication::RefreshCatalog() {
     }
     g_layout->SetTitle("Supported apps");
     g_layout->SetStatus(st);
-    g_layout->SetFooter("A info  B back  ZL/ZR page  + exit");
+    g_layout->SetFooter("A info  B back  + exit");
     g_layout->SetColumns("Name", "Kind", "Status");
 
     g_cat_order.clear();
@@ -1607,7 +1609,7 @@ void MainApplication::OpenHistory() {
 
 void MainApplication::RefreshHistory() {
     g_layout->SetTitle("Update history");
-    g_layout->SetFooter("B back  ZL/ZR page  + exit");
+    g_layout->SetFooter("B back  + exit");
     g_layout->SetColumns("App", "Update", "When");
     g_layout->ClearList();
     g_layout->SetFooterColor(pu::ui::Color(22, 42, 80, 255));
