@@ -251,7 +251,21 @@ function wireCatalog() {
   tb.querySelectorAll('[data-ccheck]').forEach(b => b.addEventListener('click', () => checkInto(apps[+b.dataset.ccheck].repo, document.querySelector('[data-cstatus="' + b.dataset.ccheck + '"]'))));
   tb.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     const i = +b.dataset.del;
-    if (confirm('Delete "' + (apps[i].name || apps[i].repo || 'this entry') + '"?')) { apps.splice(i, 1); renderCatalog(); }
+    if (!confirm('Delete "' + (apps[i].name || apps[i].repo || 'this entry') + '"?')) return;
+    apps.splice(i, 1);
+    b.closest('tr').remove();
+    // Shift data indices above the deleted entry down by 1
+    const attrs = ['data-i', 'data-ccheck', 'data-cstatus', 'data-del'];
+    $('catRows').querySelectorAll('tr').forEach(tr => {
+      attrs.forEach(attr => {
+        tr.querySelectorAll('[' + attr + ']').forEach(el => {
+          const v = +el.getAttribute(attr);
+          if (v > i) el.setAttribute(attr, v - 1);
+        });
+      });
+    });
+    $('catCount').textContent = $('catRows').children.length + ' / ' + apps.length + ' apps';
+    $('tabCat').textContent = 'Catalog (' + apps.length + ')';
   }));
 }
 
@@ -396,10 +410,17 @@ function promote(i) {
 }
 
 /* ---- shared GitHub check ---- */
+function recheckRow(btn) {
+  const tr = btn.closest('tr');
+  const inp = tr.querySelector('input[data-k=repo]');
+  const repo = inp ? inp.value.trim() : '';
+  checkInto(repo, btn.parentElement);
+}
+
 async function checkInto(repo, cell) {
   if (!repo) { cell.innerHTML = '<span class="mut">no repo</span>'; return; }
   cell.innerHTML = '<span class="mut">checking…</span>';
-  const recheckBtn = ' <button class="btn alt sm" onclick="checkInto(\'' + esc(repo).replace(/'/g, "\\'") + '\', this.parentElement)">recheck</button>';
+  const recheckBtn = ' <button class="btn alt sm" onclick="recheckRow(this)">recheck</button>';
   try {
     const res = await fetch('https://api.github.com/repos/' + repo + '/releases?per_page=5', { headers: ghHeaders() });
     if (res.status === 200) {

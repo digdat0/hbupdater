@@ -36,7 +36,9 @@ static std::vector<int> g_state;           // 0 none,1 uptodate,2 update,3 fail
 static std::string g_launch_path;
 
 static Catalog g_catalog;        // bundled known-apps list (romfs)
-static int g_mode = 0;           // 0 = tracked list, 1 = catalog, 2 = scan
+// 0=home, 1=catalog, 3=settings, 4=log-picker, 5=log-contents,
+// 6=manage-backups, 7=excluded, 8=file-install, 9=advanced
+static int g_mode = 0;
 static s32 g_list_sel = 0;       // remembered tracked-list selection
 
 // One SD-scan result paired with its catalog match.
@@ -1208,22 +1210,35 @@ static int build_scan() {
 }
 
 // ---- settings screen ------------------------------------------------------
-#define SETTING_COUNT 5
-static const char *SETTING_LABELS[SETTING_COUNT] = {
-    "Check for updates on launch", "Install overlays (.ovl)", "Install sysmodules",
-    "Install payloads / bootloader", "Test mode (force reinstall)"};
-
-static bool *setting_ptr(int i) {
+// File install submenu (mode 8)
+#define FILEINST_COUNT 3
+static const char *FILEINST_LABELS[FILEINST_COUNT] = {
+    "Install overlays (.ovl)", "Install sysmodules",
+    "Install payloads / bootloader"};
+static bool *fileinst_ptr(int i) {
     switch (i) {
-    case 0: return &g_settings.scan_on_launch;
-    case 1: return &g_settings.install_overlays;
-    case 2: return &g_settings.install_sysmodules;
-    case 3: return &g_settings.install_payloads;
-    case 4: return &g_settings.test_mode;
+    case 0: return &g_settings.install_overlays;
+    case 1: return &g_settings.install_sysmodules;
+    case 2: return &g_settings.install_payloads;
     default: return nullptr;
     }
 }
-static bool setting_is_risky(int i) { return i == 2 || i == 3; }
+static bool fileinst_is_risky(int i) { return i == 1 || i == 2; }
+
+// Advanced submenu (mode 9)
+#define ADVANCED_COUNT 2
+static const char *ADVANCED_LABELS[ADVANCED_COUNT] = {
+    "Check for updates on launch", "Test mode (force reinstall)"};
+static bool *advanced_ptr(int i) {
+    switch (i) {
+    case 0: return &g_settings.scan_on_launch;
+    case 1: return &g_settings.test_mode;
+    default: return nullptr;
+    }
+}
+
+// Settings main: action-only rows (no toggles on the main screen anymore)
+#define SETTINGS_ACTION_COUNT 7
 
 void MainApplication::OpenSettings() {
     g_list_sel = g_layout->Sel();
@@ -1235,36 +1250,25 @@ void MainApplication::OpenSettings() {
 void MainApplication::RefreshSettings() {
     g_layout->SetTitle("Settings");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A toggle  B back");
-    g_layout->SetColumns("Setting", "", "Value");
+    g_layout->SetFooter("A select  B back");
+    g_layout->SetColumns("", "", "");
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
-    for (int i = 0; i < SETTING_COUNT; i++) {
-        bool v = *setting_ptr(i);
-        std::string val = v ? "ON" : "OFF";
-        pu::ui::Color vc;
-        if (!v) {
-            vc = dim_clr;
-        } else if (setting_is_risky(i)) {
-            vc = pu::ui::Color(240, 160, 90, 255); // amber: risky + enabled
-        } else {
-            vc = pu::ui::Color(130, 225, 150, 255); // green
-        }
-        g_layout->AddRow3(SETTING_LABELS[i], "", val, name_clr, dim_clr, vc);
-    }
-    // Action rows (indices >= SETTING_COUNT): run actions / open sub-screens.
     const pu::ui::Color act(150, 190, 240, 255);
     char sup[24], exc[24];
     snprintf(sup, sizeof(sup), "%d apps", g_catalog.count);
     snprintf(exc, sizeof(exc), "%d", g_excludes.count);
+    // 0-6: all action rows
     g_layout->AddRow3("Update HBUpdater", std::string("v") + APP_VERSION_STR, ">",
                       name_clr, dim_clr, act);
     g_layout->AddRow3("Update catalog", sup, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Supported apps", sup, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Excluded apps", exc, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("File install", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("Advanced", "", ">", name_clr, dim_clr, act);
     g_layout->SetSel(keep);
 }
 
@@ -1282,16 +1286,61 @@ void MainApplication::UpdateSelf() {
 
 void MainApplication::ToggleSetting() {
     int i = g_layout->Sel();
-    bool *p = setting_ptr(i);
-    if (!p) {
-        return;
+    if (g_mode == 8) {
+        bool *p = fileinst_ptr(i);
+        if (!p) return;
+        *p = !*p;
+        settings_save(&g_settings);
+        this->RefreshFileInstall();
+        if (fileinst_is_risky(i) && *p)
+            this->ToastErr(std::string(FILEINST_LABELS[i]) + ": enabled - be careful");
+    } else if (g_mode == 9) {
+        bool *p = advanced_ptr(i);
+        if (!p) return;
+        *p = !*p;
+        settings_save(&g_settings);
+        this->RefreshAdvanced();
     }
-    *p = !*p;
-    settings_save(&g_settings);
-    this->RefreshSettings();
-    if (setting_is_risky(i) && *p) {
-        this->ToastErr(std::string(SETTING_LABELS[i]) + ": enabled - be careful");
+}
+
+static void render_toggle_list(MainLayout::Ref &lay, const char **labels,
+                               bool *(*ptr_fn)(int), bool (*risky_fn)(int),
+                               int count) {
+    const pu::ui::Color name_clr(232, 234, 240, 255);
+    const pu::ui::Color dim_clr(170, 175, 185, 255);
+    s32 keep = lay->Sel();
+    lay->ClearList();
+    for (int i = 0; i < count; i++) {
+        bool v = *ptr_fn(i);
+        std::string val = v ? "ON" : "OFF";
+        pu::ui::Color vc;
+        if (!v)
+            vc = dim_clr;
+        else if (risky_fn && risky_fn(i))
+            vc = pu::ui::Color(240, 160, 90, 255);
+        else
+            vc = pu::ui::Color(130, 225, 150, 255);
+        lay->AddRow3(labels[i], "", val, name_clr, dim_clr, vc);
     }
+    lay->SetSel(keep);
+}
+
+void MainApplication::RefreshFileInstall() {
+    g_layout->SetTitle("File install");
+    g_layout->SetStatus("");
+    g_layout->SetFooter("A toggle  B back");
+    g_layout->SetColumns("Setting", "", "Value");
+    render_toggle_list(g_layout, FILEINST_LABELS, fileinst_ptr,
+                       fileinst_is_risky, FILEINST_COUNT);
+}
+
+void MainApplication::RefreshAdvanced() {
+    g_layout->SetTitle("Advanced");
+    g_layout->SetStatus("");
+    g_layout->SetFooter("A toggle  B back");
+    g_layout->SetColumns("Setting", "", "Value");
+    render_toggle_list(g_layout, ADVANCED_LABELS, advanced_ptr, nullptr,
+                       ADVANCED_COUNT);
 }
 
 // ---- log viewer -----------------------------------------------------------
@@ -1678,19 +1727,49 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             g_layout->SetSel(g_list_sel);
         } else if (down & HidNpadButton_A) {
             int sel = g_layout->Sel();
-            if (sel == SETTING_COUNT) {
-                this->UpdateSelf(); // self-update the app
-            } else if (sel == SETTING_COUNT + 1) {
-                this->UpdateCatalog(); // OTA: fetch latest catalog
-            } else if (sel == SETTING_COUNT + 2) {
-                this->OpenCatalog(); // "Supported apps" (read-only browse)
-            } else if (sel == SETTING_COUNT + 3) {
+            if (sel == 0) {
+                this->UpdateSelf();
+            } else if (sel == 1) {
+                this->UpdateCatalog();
+            } else if (sel == 2) {
+                this->OpenCatalog();
+            } else if (sel == 3) {
                 this->OpenExcluded();
-            } else if (sel == SETTING_COUNT + 4) {
+            } else if (sel == 4) {
                 this->OpenLogs();
-            } else {
-                this->ToggleSetting();
+            } else if (sel == 5) {
+                g_settings_sel = g_layout->Sel();
+                g_mode = 8;
+                g_layout->SetSel(0);
+                this->RefreshFileInstall();
+            } else if (sel == 6) {
+                g_settings_sel = g_layout->Sel();
+                g_mode = 9;
+                g_layout->SetSel(0);
+                this->RefreshAdvanced();
             }
+        }
+        return;
+    }
+
+    if (g_mode == 8) {
+        if (down & HidNpadButton_B) {
+            g_mode = 3;
+            this->RefreshSettings();
+            g_layout->SetSel(g_settings_sel);
+        } else if (down & HidNpadButton_A) {
+            this->ToggleSetting();
+        }
+        return;
+    }
+
+    if (g_mode == 9) {
+        if (down & HidNpadButton_B) {
+            g_mode = 3;
+            this->RefreshSettings();
+            g_layout->SetSel(g_settings_sel);
+        } else if (down & HidNpadButton_A) {
+            this->ToggleSetting();
         }
         return;
     }

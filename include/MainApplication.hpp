@@ -76,6 +76,9 @@ class MainApplication : public pu::ui::Application {
     void UpdateCatalog();        // OTA: fetch the latest catalog from the repo
     void UpdateSelf();           // self-update HBUpdater from its own releases
 
+    void RefreshFileInstall();   // file install submenu
+    void RefreshAdvanced();      // advanced settings submenu
+
     void OpenLogs();             // settings -> log picker
     void RefreshLogMenu();       // rebuild the log-picker list
     void OpenLog(int idx);       // display one log file's contents
