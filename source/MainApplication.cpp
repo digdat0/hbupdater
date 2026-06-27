@@ -58,6 +58,24 @@ static int g_bk_app = -1;                // tracked-app index for the backup vie
 static int g_bk_from = 0;                // mode to return to from backup view
 static void scan_backup_dirs();          // forward decl
 
+static std::string g_filter;         // home list search filter ("" = none)
+static std::vector<int> g_filt_map;  // filtered row index -> g_cfg index
+
+static bool show_keyboard(const char *header, const char *guide,
+                           const char *initial, char *out, size_t outsz) {
+    SwkbdConfig kbd;
+    if (R_FAILED(swkbdCreate(&kbd, 0))) return false;
+    swkbdConfigMakePresetDefault(&kbd);
+    swkbdConfigSetHeaderText(&kbd, header);
+    swkbdConfigSetGuideText(&kbd, guide);
+    if (initial && initial[0])
+        swkbdConfigSetInitialText(&kbd, initial);
+    swkbdConfigSetStringLenMax(&kbd, (u32)(outsz - 1));
+    Result rc = swkbdShow(&kbd, out, outsz);
+    swkbdClose(&kbd);
+    return R_SUCCEEDED(rc);
+}
+
 static Settings g_settings;          // user prefs (settings.json)
 static Excludes g_excludes;          // opt-out list (repos hidden from home)
 static bool g_check_stale = false;   // check-all: skip recently-checked apps
@@ -821,7 +839,11 @@ void MainApplication::Refresh() {
     g_asset_size.resize(g_cfg.count);
     g_state.resize(g_cfg.count);
 
-    g_layout->SetTitle("My Apps");
+    if (g_filter.empty()) {
+        g_layout->SetTitle("My Apps");
+    } else {
+        g_layout->SetTitle(std::string("filter: ") + g_filter);
+    }
     int outdated = 0;
     for (int i = 0; i < g_cfg.count; i++) {
         if (g_state[i] == 2) {
@@ -845,16 +867,27 @@ void MainApplication::Refresh() {
                  g_cfg.count == 1 ? "" : "s");
     }
     g_layout->SetStatus(st);
-    g_layout->SetFooter("A open  X check all  R settings  "
+    g_layout->SetFooter("A open  X check all  Y search  R settings  "
                         "- exclude  ZL/ZR page  + exit");
     g_layout->SetColumns("Name", "Installed", "Update");
 
+    g_filt_map.clear();
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
     const pu::ui::Color pin_clr(180, 160, 220, 255);
     for (int i = 0; i < g_cfg.count; i++) {
+        if (!g_filter.empty()) {
+            std::string lo_name(g_cfg.apps[i].name);
+            for (auto &ch : lo_name) ch = (char)tolower((unsigned char)ch);
+            std::string lo_filt(g_filter);
+            for (auto &ch : lo_filt) ch = (char)tolower((unsigned char)ch);
+            if (lo_name.find(lo_filt) == std::string::npos) {
+                continue;
+            }
+        }
+        g_filt_map.push_back(i);
         const char *iv = g_cfg.apps[i].version;
         std::string ver = iv[0] ? iv : "-";
         std::string status = g_status[i];
@@ -868,9 +901,12 @@ void MainApplication::Refresh() {
         g_layout->AddRow3(g_cfg.apps[i].name, ver, status, name_clr, dim_clr,
                           sc);
     }
-    if (g_cfg.count == 0) {
-        g_layout->AddRow3("(no recognized apps - update catalog in settings)",
-                          "", "", dim_clr, dim_clr, dim_clr);
+    if (g_filt_map.empty()) {
+        g_layout->AddRow3(
+            g_filter.empty()
+                ? "(no recognized apps - update catalog in settings)"
+                : "(no matches)",
+            "", "", dim_clr, dim_clr, dim_clr);
     }
     g_layout->SetSel(keep);
 }
@@ -1258,7 +1294,7 @@ static bool *advanced_ptr(int i) {
 }
 
 // Settings main: action-only rows (no toggles on the main screen anymore)
-#define SETTINGS_ACTION_COUNT 7
+#define SETTINGS_ACTION_COUNT 8
 
 void MainApplication::OpenSettings() {
     g_list_sel = g_layout->Sel();
@@ -1289,6 +1325,7 @@ void MainApplication::RefreshSettings() {
     g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("File install", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Advanced", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("Add repo manually", "", ">", name_clr, dim_clr, act);
     g_layout->SetSel(keep);
 }
 
@@ -1939,6 +1976,29 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                 g_mode = 9;
                 g_layout->SetSel(0);
                 this->RefreshAdvanced();
+            } else if (sel == 7) {
+                char repo[128] = {0};
+                if (show_keyboard("Add repo", "owner/repo (e.g. switchbrew/nx-hbmenu)",
+                                  "", repo, sizeof(repo))) {
+                    if (!repo[0] || !strchr(repo, '/')) {
+                        this->ToastErr("Invalid format (need owner/repo)");
+                    } else if (apps_find(&g_cfg, repo) >= 0) {
+                        this->ToastErr("Already tracked");
+                    } else {
+                        char path[256];
+                        const char *base = strrchr(repo, '/');
+                        base = base ? base + 1 : repo;
+                        snprintf(path, sizeof(path), "sdmc:/switch/%s.nro", base);
+                        if (apps_add(&g_cfg, base, repo, path, "", "nro", false)) {
+                            apps_save(&g_cfg);
+                            seed_states_from_cache();
+                            this->Toast(std::string("Added ") + repo);
+                        } else {
+                            this->ToastErr("App list full");
+                        }
+                        this->RefreshSettings();
+                    }
+                }
             }
         }
         return;
@@ -2054,11 +2114,25 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         }
         return;
     }
+    if (down & HidNpadButton_Y) {
+        char buf[64] = {0};
+        if (show_keyboard("Search", "Filter by app name",
+                          g_filter.c_str(), buf, sizeof(buf))) {
+            g_filter = buf;
+        } else {
+            g_filter.clear();
+        }
+        g_layout->SetSel(0);
+        this->Refresh();
+        return;
+    }
     if (down & HidNpadButton_R) {
+        g_filter.clear();
         this->OpenSettings();
         return;
     }
-    s32 i = g_layout->Sel();
+    s32 sel = g_layout->Sel();
+    int i = (sel >= 0 && sel < (int)g_filt_map.size()) ? g_filt_map[sel] : -1;
     if (down & HidNpadButton_A) {
         if (i < 0 || i >= g_cfg.count) {
             return;
