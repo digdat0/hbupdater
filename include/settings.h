@@ -17,7 +17,7 @@ typedef struct {
     bool install_overlays;   /* allow installing .ovl overlays (default true) */
     bool install_sysmodules; /* allow atmosphere/contents sysmodules (false) */
     bool install_payloads;   /* allow .bin / bootloader payloads (false) */
-    bool test_mode;          /* backups on install + revert/reinstall (false) */
+    bool auto_backup;        /* backup before install (default true) */
     char github_token[256];  /* optional PAT for 5000/hr API limit ("" = none) */
 } Settings;
 

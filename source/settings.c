@@ -12,7 +12,7 @@ static void defaults(Settings *s) {
     s->install_overlays = true;
     s->install_sysmodules = false; /* risky: off by default */
     s->install_payloads = false;   /* risky: off by default */
-    s->test_mode = false;
+    s->auto_backup = true;
     s->github_token[0] = '\0';
 }
 
@@ -48,9 +48,9 @@ void settings_load(Settings *s) {
         if (i >= 0) {
             s->install_payloads = json_bool(js, tok, i);
         }
-        i = json_obj_get(js, tok, 0, "test_mode");
+        i = json_obj_get(js, tok, 0, "auto_backup");
         if (i >= 0) {
-            s->test_mode = json_bool(js, tok, i);
+            s->auto_backup = json_bool(js, tok, i);
         }
         i = json_obj_get(js, tok, 0, "github_token");
         if (i >= 0) {
@@ -74,7 +74,7 @@ bool settings_save(const Settings *s) {
             "  \"install_overlays\": %s,\n"
             "  \"install_sysmodules\": %s,\n"
             "  \"install_payloads\": %s,\n"
-            "  \"test_mode\": %s,\n"
+            "  \"auto_backup\": %s,\n"
             "  \"github_token\": \"%s\"\n"
             "}\n",
             s->first_run_done ? "true" : "false",
@@ -82,7 +82,7 @@ bool settings_save(const Settings *s) {
             s->install_overlays ? "true" : "false",
             s->install_sysmodules ? "true" : "false",
             s->install_payloads ? "true" : "false",
-            s->test_mode ? "true" : "false", s->github_token);
+            s->auto_backup ? "true" : "false", s->github_token);
     fclose(f);
     return true;
 }

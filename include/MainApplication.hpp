@@ -78,6 +78,8 @@ class MainApplication : public pu::ui::Application {
 
     void RefreshFileInstall();   // file install submenu
     void RefreshAdvanced();      // advanced settings submenu
+    void RefreshAllBackups();    // global backup browser
+    void DeleteBackupFolder();   // delete an app's entire backup folder
 
     void OpenLogs();             // settings -> log picker
     void RefreshLogMenu();       // rebuild the log-picker list

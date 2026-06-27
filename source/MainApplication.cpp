@@ -24,6 +24,7 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <dirent.h>
 }
 
 // ---- backend state --------------------------------------------------------
@@ -37,7 +38,7 @@ static std::string g_launch_path;
 
 static Catalog g_catalog;        // bundled known-apps list (romfs)
 // 0=home, 1=catalog, 3=settings, 4=log-picker, 5=log-contents,
-// 6=manage-backups, 7=excluded, 8=file-install, 9=advanced
+// 6=manage-backups, 7=excluded, 8=file-install, 9=advanced, 10=all-backups
 static int g_mode = 0;
 static s32 g_list_sel = 0;       // remembered tracked-list selection
 
@@ -421,9 +422,11 @@ static void job_download(int idx) {
     }
     net_log("  validate -> ok");
 
-    // Always back up before touching the SD (full per-install history).
-    Backup *b = backup_start(g_cfg.apps[idx].repo, g_cfg.apps[idx].name, kind,
-                             g_cfg.apps[idx].version, g_latest[idx].c_str());
+    Backup *b = nullptr;
+    if (g_settings.auto_backup) {
+        b = backup_start(g_cfg.apps[idx].repo, g_cfg.apps[idx].name, kind,
+                         g_cfg.apps[idx].version, g_latest[idx].c_str());
+    }
     if (strcmp(kind, "zip") == 0) {
         g_phase = 1;
         g_dl_prog = 0.0f;
@@ -1228,11 +1231,11 @@ static bool fileinst_is_risky(int i) { return i == 1 || i == 2; }
 // Advanced submenu (mode 9)
 #define ADVANCED_COUNT 2
 static const char *ADVANCED_LABELS[ADVANCED_COUNT] = {
-    "Check for updates on launch", "Test mode (force reinstall)"};
+    "Check for updates on launch", "Automatic backup"};
 static bool *advanced_ptr(int i) {
     switch (i) {
     case 0: return &g_settings.scan_on_launch;
-    case 1: return &g_settings.test_mode;
+    case 1: return &g_settings.auto_backup;
     default: return nullptr;
     }
 }
@@ -1337,10 +1340,21 @@ void MainApplication::RefreshFileInstall() {
 void MainApplication::RefreshAdvanced() {
     g_layout->SetTitle("Advanced");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A toggle  B back");
+    g_layout->SetFooter("A select  B back");
     g_layout->SetColumns("Setting", "", "Value");
-    render_toggle_list(g_layout, ADVANCED_LABELS, advanced_ptr, nullptr,
-                       ADVANCED_COUNT);
+    const pu::ui::Color name_clr(232, 234, 240, 255);
+    const pu::ui::Color dim_clr(170, 175, 185, 255);
+    const pu::ui::Color act(150, 190, 240, 255);
+    s32 keep = g_layout->Sel();
+    g_layout->ClearList();
+    for (int i = 0; i < ADVANCED_COUNT; i++) {
+        bool v = *advanced_ptr(i);
+        std::string val = v ? "ON" : "OFF";
+        pu::ui::Color vc = v ? pu::ui::Color(130, 225, 150, 255) : dim_clr;
+        g_layout->AddRow3(ADVANCED_LABELS[i], "", val, name_clr, dim_clr, vc);
+    }
+    g_layout->AddRow3("Manage backups", "", ">", name_clr, dim_clr, act);
+    g_layout->SetSel(keep);
 }
 
 // ---- log viewer -----------------------------------------------------------
@@ -1585,6 +1599,7 @@ void MainApplication::DeleteBackup() {
     std::string label = bi.prior[0] ? bi.prior : bi.id;
     if (this->Confirm("Delete backup", std::string("Delete snapshot ") + label +
                                            "?")) {
+        net_log("BACKUP delete snapshot: %s / %s", g_cfg.apps[g_bk_app].repo, bi.id);
         backup_delete_id(g_cfg.apps[g_bk_app].repo, bi.id);
         load_bklist(g_bk_app);
         this->RefreshBackups();
@@ -1599,12 +1614,90 @@ void MainApplication::ClearBackups() {
     if (this->Confirm("Clear all backups",
                       std::string("Delete ALL backups for ") +
                           g_cfg.apps[g_bk_app].name + "?")) {
+        net_log("BACKUP clear all: %s", g_cfg.apps[g_bk_app].repo);
         backup_clear(g_cfg.apps[g_bk_app].repo);
         this->Toast("Cleared");
         g_mode = 0;
         this->Refresh();
         g_layout->SetSel(g_list_sel);
     }
+}
+
+// ---- global backup browser (mode 10) --------------------------------------
+struct BkEntry {
+    std::string name; // directory name (slug)
+    int count;        // number of snapshots
+};
+static std::vector<BkEntry> g_allbk;
+
+static void scan_backup_dirs() {
+    g_allbk.clear();
+    DIR *d = opendir(BACKUP_DIR);
+    if (!d) return;
+    struct dirent *e;
+    while ((e = readdir(d)) != nullptr) {
+        if (e->d_name[0] == '.') continue;
+        std::string path = std::string(BACKUP_DIR) + "/" + e->d_name;
+        struct stat st;
+        if (stat(path.c_str(), &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+        int snapshots = 0;
+        DIR *sub = opendir(path.c_str());
+        if (sub) {
+            struct dirent *se;
+            while ((se = readdir(sub)) != nullptr) {
+                if (se->d_name[0] != '.') snapshots++;
+            }
+            closedir(sub);
+        }
+        g_allbk.push_back({e->d_name, snapshots});
+    }
+    closedir(d);
+    std::sort(g_allbk.begin(), g_allbk.end(),
+              [](const BkEntry &a, const BkEntry &b) { return a.name < b.name; });
+}
+
+void MainApplication::RefreshAllBackups() {
+    g_layout->SetTitle("Manage backups");
+    char st[40];
+    snprintf(st, sizeof(st), "%d app%s", (int)g_allbk.size(),
+             g_allbk.size() == 1 ? "" : "s");
+    g_layout->SetStatus(st);
+    g_layout->SetFooter("A view  X delete  B back");
+    g_layout->SetColumns("App", "", "Snapshots");
+    s32 keep = g_layout->Sel();
+    g_layout->ClearList();
+    const pu::ui::Color name_clr(232, 234, 240, 255);
+    const pu::ui::Color dim_clr(170, 175, 185, 255);
+    if (g_allbk.empty()) {
+        g_layout->AddRow3("(no backups)", "", "", dim_clr, dim_clr, dim_clr);
+    } else {
+        for (auto &bk : g_allbk) {
+            char cnt[16];
+            snprintf(cnt, sizeof(cnt), "%d", bk.count);
+            g_layout->AddRow3(bk.name, "", cnt, name_clr, dim_clr, dim_clr);
+        }
+    }
+    g_layout->SetSel(keep);
+}
+
+void MainApplication::DeleteBackupFolder() {
+    s32 i = g_layout->Sel();
+    if (i < 0 || i >= (int)g_allbk.size()) return;
+    std::string name = g_allbk[i].name;
+    if (!this->Confirm("Delete backups",
+                       "Delete ALL backups for " + name + "?"))
+        return;
+    std::string path = std::string(BACKUP_DIR) + "/" + name;
+    net_log("BACKUP delete folder: %s", path.c_str());
+    if (fs_rm_rf(path.c_str())) {
+        net_log("BACKUP delete folder: ok");
+        this->Toast("Deleted " + name);
+    } else {
+        net_log("BACKUP delete folder: FAILED");
+        this->ToastErr("Delete failed");
+    }
+    scan_backup_dirs();
+    this->RefreshAllBackups();
 }
 
 // Opt-out model: the home list is whatever is currently installed + recognized,
@@ -1769,7 +1862,25 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             this->RefreshSettings();
             g_layout->SetSel(g_settings_sel);
         } else if (down & HidNpadButton_A) {
-            this->ToggleSetting();
+            int sel = g_layout->Sel();
+            if (sel == ADVANCED_COUNT) {
+                scan_backup_dirs();
+                g_mode = 10;
+                g_layout->SetSel(0);
+                this->RefreshAllBackups();
+            } else {
+                this->ToggleSetting();
+            }
+        }
+        return;
+    }
+
+    if (g_mode == 10) {
+        if (down & HidNpadButton_B) {
+            g_mode = 9;
+            this->RefreshAdvanced();
+        } else if (down & HidNpadButton_X) {
+            this->DeleteBackupFolder();
         }
         return;
     }
@@ -1834,39 +1945,25 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             return;
         }
         bool has_backup = backup_exists(g_cfg.apps[i].repo);
-        if (g_settings.test_mode) {
-            // Power menu (last option = cancel button per CreateShowDialog).
-            std::vector<std::string> opts = {"Check / Update"};
-            int manage_idx = -1, force_idx = -1;
-            if (has_backup) {
-                manage_idx = (int)opts.size();
-                opts.push_back("Manage backups");
-            }
-            force_idx = (int)opts.size();
-            opts.push_back("Force reinstall");
-            opts.push_back("Cancel");
-            int r = this->CreateShowDialog("Actions", g_cfg.apps[i].name, opts,
-                                           true);
-            if (r == 0) {
-                g_force = false;
-                this->StartCheck(i, true);
-            } else if (r == manage_idx && has_backup) {
-                this->OpenBackups(i);
-            } else if (r == force_idx) {
-                g_force = true;
-                this->StartCheck(i, true);
-            }
-            return;
+        std::vector<std::string> opts = {"Check / Update"};
+        int manage_idx = -1, force_idx = -1;
+        if (has_backup) {
+            manage_idx = (int)opts.size();
+            opts.push_back("Manage backups");
         }
-        // Normal mode: A does the contextual thing.
-        if (g_state[i] == 2) {
+        force_idx = (int)opts.size();
+        opts.push_back("Force reinstall");
+        opts.push_back("Cancel");
+        int r = this->CreateShowDialog("Actions", g_cfg.apps[i].name, opts,
+                                       true);
+        if (r == 0) {
             g_force = false;
-            this->StartCheck(i, true); // update available -> update flow
-        } else if (has_backup) {
-            this->OpenBackups(i); // up to date -> view history / revert
-        } else {
-            g_force = false;
-            this->StartCheck(i, true); // not checked yet -> check
+            this->StartCheck(i, true);
+        } else if (r == manage_idx && has_backup) {
+            this->OpenBackups(i);
+        } else if (r == force_idx) {
+            g_force = true;
+            this->StartCheck(i, true);
         }
     } else if (down & HidNpadButton_Minus) {
         if (i >= 0 && i < g_cfg.count) {
