@@ -39,6 +39,7 @@ class TableList : public pu::ui::elm::Element {
     s32 sel;
     s32 scroll_top;
     pu::ui::Color row_bg, row_alt_bg, focus_bg, scroll_clr, hdr_bg, hdr_fg;
+    s32 col1_w, col2_w;
     std::string font, hdr_font;
     std::vector<Row> rows;
 
@@ -54,16 +55,14 @@ class TableList : public pu::ui::elm::Element {
     static constexpr s32 PadX = 26;
     static constexpr s32 GAP = 18;
     static constexpr s32 HDR_H = 44;
-    // The two right columns together take ~half the list width, split fairly
-    // evenly (status gets a bit more for "x -> y" text); name flexes in the rest.
-    static constexpr s32 COL1_W = 300; // version / "Installed" column
-    static constexpr s32 COL2_W = 340; // status / "Update" column
+    static constexpr s32 DEF_COL1_W = 300;
+    static constexpr s32 DEF_COL2_W = 340;
 
     // Column geometry, relative to the element's x.
     s32 c2_right() const { return this->w - PadX; }
-    s32 c2_left() const { return this->w - PadX - COL2_W; }
+    s32 c2_left() const { return this->w - PadX - this->col2_w; }
     s32 c1_right() const { return this->c2_left() - GAP; }
-    s32 c1_left() const { return this->c1_right() - COL1_W; }
+    s32 c1_left() const { return this->c1_right() - this->col1_w; }
     s32 c0_max() const {
         s32 m = this->c1_left() - GAP - PadX;
         return m < 60 ? 60 : m;
@@ -133,8 +132,8 @@ class TableList : public pu::ui::elm::Element {
         this->FreeHeader();
         if (this->has_header) {
             this->hdr_cache.c0 = mk(this->hdr_font, this->h0, this->hdr_fg, c0_max());
-            this->hdr_cache.c1 = mk(this->hdr_font, this->h1, this->hdr_fg, COL1_W);
-            this->hdr_cache.c2 = mk(this->hdr_font, this->h2, this->hdr_fg, COL2_W);
+            this->hdr_cache.c1 = mk(this->hdr_font, this->h1, this->hdr_fg, this->col1_w);
+            this->hdr_cache.c2 = mk(this->hdr_font, this->h2, this->hdr_fg, this->col2_w);
         }
         this->hdr_dirty = false;
     }
@@ -147,8 +146,8 @@ class TableList : public pu::ui::elm::Element {
             RowCache rc;
             if (ridx >= 0 && ridx < (s32)this->rows.size()) {
                 Row &r = this->rows[ridx];
-                rc.c1 = mk(this->font, r.c1, r.clr1, COL1_W);
-                rc.c2 = mk(this->font, r.c2, r.clr2, COL2_W);
+                rc.c1 = mk(this->font, r.c1, r.clr1, this->col1_w);
+                rc.c2 = mk(this->font, r.c2, r.clr2, this->col2_w);
                 // Single-column rows (log lines, messages) get the full width.
                 bool single = r.c1.empty() && r.c2.empty();
                 rc.c0 = mk(this->font, r.c0, r.clr0,
@@ -166,7 +165,8 @@ class TableList : public pu::ui::elm::Element {
         : x(x), y(y), w(w), row_h(row_h), rows_visible(rows_visible), sel(0),
           scroll_top(0), row_bg(22, 23, 27, 255), row_alt_bg(28, 30, 36, 255),
           focus_bg(28, 122, 116, 255), scroll_clr(80, 86, 100, 255),
-          hdr_bg(16, 17, 21, 255), hdr_fg(150, 157, 172, 255), has_header(false),
+          hdr_bg(16, 17, 21, 255), hdr_fg(150, 157, 172, 255),
+          col1_w(DEF_COL1_W), col2_w(DEF_COL2_W), has_header(false),
           hdr_dirty(true), cache_top(-1), dirty(true) {
         this->font = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::MediumLarge);
         this->hdr_font = pu::ui::GetDefaultFont(pu::ui::DefaultFontSize::Medium);
@@ -191,6 +191,15 @@ class TableList : public pu::ui::elm::Element {
         this->has_header = false;
         this->hdr_dirty = true;
         this->dirty = true;
+    }
+    void SetColumnWidths(s32 c1, s32 c2) {
+        this->col1_w = c1;
+        this->col2_w = c2;
+        this->hdr_dirty = true;
+        this->dirty = true;
+    }
+    void ResetColumnWidths() {
+        this->SetColumnWidths(DEF_COL1_W, DEF_COL2_W);
     }
 
     void Clear() {

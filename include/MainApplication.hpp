@@ -10,6 +10,8 @@ class MainLayout : public pu::ui::Layout {
   private:
     pu::ui::elm::Rectangle::Ref header;
     pu::ui::elm::Rectangle::Ref footer;
+    pu::ui::elm::Rectangle::Ref info_bar;
+    pu::ui::elm::TextBlock::Ref info_text;
     pu::ui::elm::TextBlock::Ref product; // fixed brand, far left
     pu::ui::elm::TextBlock::Ref title;   // page name, right of brand
     pu::ui::elm::TextBlock::Ref status;
@@ -24,6 +26,9 @@ class MainLayout : public pu::ui::Layout {
     void SetStatus(const std::string &t);
     void SetFooter(const std::string &t);
     void SetFooterColor(pu::ui::Color clr);
+    void SetInfoBar(const std::string &t);
+    void SetColumnWidths(s32 c1, s32 c2);
+    void ResetColumnWidths();
     void ClearList();
     void SetColumns(const std::string &a, const std::string &b,
                     const std::string &c);

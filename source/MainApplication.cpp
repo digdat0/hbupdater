@@ -733,6 +733,16 @@ MainLayout::MainLayout() : Layout::Layout() {
     this->list = TableList::New(0, list_y, sw, row_h, rows);
     this->Add(this->list);
 
+    const s32 info_h = 36;
+    this->info_bar = pu::ui::elm::Rectangle::New(0, sh - footer_h - info_h, sw,
+                                                  info_h,
+                                                  pu::ui::Color(16, 17, 21, 255));
+    this->Add(this->info_bar);
+    this->info_text = pu::ui::elm::TextBlock::New(30, sh - footer_h - info_h + 6,
+                                                   "");
+    this->info_text->SetColor(pu::ui::Color(140, 148, 165, 255));
+    this->Add(this->info_text);
+
     this->footer = pu::ui::elm::Rectangle::New(0, sh - footer_h, sw, footer_h,
                                                pu::ui::Color(22, 42, 80, 255));
     this->Add(this->footer);
@@ -756,6 +766,16 @@ void MainLayout::SetStatus(const std::string &t) {
 }
 void MainLayout::SetFooterColor(pu::ui::Color clr) {
     this->footer->SetColor(clr);
+}
+void MainLayout::SetInfoBar(const std::string &t) {
+    this->info_text->SetText(t);
+    this->info_bar->SetWidth(t.empty() ? 0 : (s32)pu::ui::render::ScreenWidth);
+}
+void MainLayout::SetColumnWidths(s32 c1, s32 c2) {
+    this->list->SetColumnWidths(c1, c2);
+}
+void MainLayout::ResetColumnWidths() {
+    this->list->ResetColumnWidths();
 }
 void MainLayout::SetFooter(const std::string &t) {
     std::vector<std::string> segs;
@@ -890,6 +910,7 @@ void MainApplication::Refresh() {
     else
         g_layout->SetFooterColor(pu::ui::Color(22, 42, 80, 255));
     g_layout->SetColumns("Name", "Installed", "Update");
+    g_layout->ResetColumnWidths();
 
     g_filt_map.clear();
     s32 keep = g_layout->Sel();
@@ -932,6 +953,23 @@ void MainApplication::Refresh() {
         }
     }
     g_layout->SetSel(keep);
+    // Show path of selected app
+    s32 ssel = g_layout->Sel();
+    int si = (ssel >= 0 && ssel < (int)g_filt_map.size()) ? g_filt_map[ssel] : -1;
+    if (si >= 0 && si < g_cfg.count)
+        g_layout->SetInfoBar(g_cfg.apps[si].path);
+    else
+        g_layout->SetInfoBar("");
+}
+
+static void update_info_bar() {
+    if (g_mode != 0) return;
+    s32 sel = g_layout->Sel();
+    int i = (sel >= 0 && sel < (int)g_filt_map.size()) ? g_filt_map[sel] : -1;
+    if (i >= 0 && i < g_cfg.count)
+        g_layout->SetInfoBar(g_cfg.apps[i].path);
+    else
+        g_layout->SetInfoBar("");
 }
 
 void MainApplication::CheckAll() {
@@ -1197,6 +1235,7 @@ void MainApplication::OpenCatalog() {
     }
     g_settings_sel = g_layout->Sel();
     g_mode = 1;
+    g_layout->SetInfoBar("");
     g_layout->SetSel(0);
     this->RefreshCatalog();
 }
@@ -1342,6 +1381,7 @@ static bool *advanced_ptr(int i) {
 void MainApplication::OpenSettings() {
     g_list_sel = g_layout->Sel();
     g_mode = 3;
+    g_layout->SetInfoBar("");
     g_layout->SetSel(0);
     this->RefreshSettings();
 }
@@ -1352,6 +1392,7 @@ void MainApplication::RefreshSettings() {
     g_layout->SetFooterColor(pu::ui::Color(22, 42, 80, 255));
     g_layout->SetFooter("A select  B back  + exit");
     g_layout->SetColumns("", "", "");
+    g_layout->ResetColumnWidths();
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
@@ -1360,7 +1401,9 @@ void MainApplication::RefreshSettings() {
     char sup[24], exc[24];
     snprintf(sup, sizeof(sup), "%d apps", g_catalog.count);
     snprintf(exc, sizeof(exc), "%d", g_excludes.count);
-    // 0-6: all action rows
+    // 0: Update HBUpdater  1: Update catalog  2: Supported apps
+    // 3: Excluded apps  4: View logs  5: File install
+    // 6: Manage backups  7: Add repo manually  8: Advanced
     g_layout->AddRow3("Update HBUpdater", std::string("v") + APP_VERSION_STR, ">",
                       name_clr, dim_clr, act);
     g_layout->AddRow3("Update catalog", sup, ">", name_clr, dim_clr, act);
@@ -1368,12 +1411,9 @@ void MainApplication::RefreshSettings() {
     g_layout->AddRow3("Excluded apps", exc, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("File install", "", ">", name_clr, dim_clr, act);
-    g_layout->AddRow3("Advanced", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("Manage backups", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Add repo manually", "", ">", name_clr, dim_clr, act);
-    g_layout->AddRow3("GitHub token", g_settings.github_token[0] ? "set" : "none",
-                      ">", name_clr, dim_clr,
-                      g_settings.github_token[0]
-                          ? pu::ui::Color(130, 225, 150, 255) : dim_clr);
+    g_layout->AddRow3("Advanced", "", ">", name_clr, dim_clr, act);
     g_layout->SetSel(keep);
 }
 
@@ -1446,7 +1486,6 @@ void MainApplication::RefreshAdvanced() {
     g_layout->SetColumns("Setting", "", "Value");
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
-    const pu::ui::Color act(150, 190, 240, 255);
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
     for (int i = 0; i < ADVANCED_COUNT; i++) {
@@ -1455,7 +1494,10 @@ void MainApplication::RefreshAdvanced() {
         pu::ui::Color vc = v ? pu::ui::Color(130, 225, 150, 255) : dim_clr;
         g_layout->AddRow3(ADVANCED_LABELS[i], "", val, name_clr, dim_clr, vc);
     }
-    g_layout->AddRow3("Manage backups", "", ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("GitHub token", g_settings.github_token[0] ? "set" : "none",
+                      g_settings.github_token[0] ? "set" : ">", name_clr, dim_clr,
+                      g_settings.github_token[0]
+                          ? pu::ui::Color(130, 225, 150, 255) : dim_clr);
     g_layout->SetSel(keep);
 }
 
@@ -1641,6 +1683,16 @@ void MainApplication::OpenExcluded() {
 
 static std::vector<int> g_exc_order; // sorted excluded-list display order
 
+// Resolve display name for an excluded repo from the catalog.
+static std::string exc_display_name(const char *repo) {
+    for (int c = 0; c < g_catalog.count; c++) {
+        if (strcasecmp(g_catalog.items[c].repo, repo) == 0)
+            return g_catalog.items[c].name;
+    }
+    const char *sl = strrchr(repo, '/');
+    return sl ? sl + 1 : repo;
+}
+
 void MainApplication::RefreshExcluded() {
     g_layout->SetTitle("Excluded apps");
     char st[40];
@@ -1648,6 +1700,7 @@ void MainApplication::RefreshExcluded() {
     g_layout->SetStatus(st);
     g_layout->SetFooter("A re-include  B back  + exit");
     g_layout->SetColumns("Name", "", "Repo");
+    g_layout->SetColumnWidths(0, 580);
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
@@ -1659,22 +1712,14 @@ void MainApplication::RefreshExcluded() {
         for (int i = 0; i < g_excludes.count; i++) g_exc_order.push_back(i);
         std::sort(g_exc_order.begin(), g_exc_order.end(),
                   [](int a, int b) {
-                      return strcasecmp(g_excludes.repos[a],
-                                       g_excludes.repos[b]) < 0;
+                      return strcasecmp(
+                                 exc_display_name(g_excludes.repos[a]).c_str(),
+                                 exc_display_name(g_excludes.repos[b]).c_str()) <
+                             0;
                   });
         for (int ei : g_exc_order) {
             const char *repo = g_excludes.repos[ei];
-            std::string name;
-            for (int c = 0; c < g_catalog.count; c++) {
-                if (strcasecmp(g_catalog.items[c].repo, repo) == 0) {
-                    name = g_catalog.items[c].name;
-                    break;
-                }
-            }
-            if (name.empty()) {
-                const char *sl = strrchr(repo, '/');
-                name = sl ? sl + 1 : repo;
-            }
+            std::string name = exc_display_name(repo);
             g_layout->AddRow3(name, "", repo, name_clr, dim_clr, dim_clr);
         }
     }
@@ -2016,6 +2061,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             hold = 0;
         } else if (++hold > 22 && ((hold - 22) % 3) == 0) {
             g_layout->Step(dir);
+            update_info_bar();
         }
     }
     if (down & HidNpadButton_ZL) {
@@ -2024,6 +2070,8 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     if (down & HidNpadButton_ZR) {
         g_layout->PageDown();
     }
+    if (down & (NAV_DOWN | NAV_UP | HidNpadButton_ZL | HidNpadButton_ZR))
+        update_info_bar();
 
     // While a network job runs, only navigation is allowed (the worker reads
     // g_cfg and the result vectors; blocking actions avoids races + double jobs).
@@ -2117,10 +2165,11 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                 g_layout->SetSel(0);
                 this->RefreshFileInstall();
             } else if (sel == 6) {
+                scan_backup_dirs();
                 g_settings_sel = g_layout->Sel();
-                g_mode = 9;
+                g_mode = 10;
                 g_layout->SetSel(0);
-                this->RefreshAdvanced();
+                this->RefreshAllBackups();
             } else if (sel == 7) {
                 char repo[128] = {0};
                 if (show_keyboard("Add repo", "owner/repo (e.g. switchbrew/nx-hbmenu)",
@@ -2146,17 +2195,10 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                     }
                 }
             } else if (sel == 8) {
-                char tok[256] = {0};
-                if (show_keyboard("GitHub token",
-                                  "Paste personal access token (empty to clear)",
-                                  g_settings.github_token, tok, sizeof(tok))) {
-                    snprintf(g_settings.github_token,
-                             sizeof(g_settings.github_token), "%s", tok);
-                    settings_save(&g_settings);
-                    net_set_auth(g_settings.github_token);
-                    this->RefreshSettings();
-                    this->Toast(tok[0] ? "Token saved" : "Token cleared");
-                }
+                g_settings_sel = g_layout->Sel();
+                g_mode = 9;
+                g_layout->SetSel(0);
+                this->RefreshAdvanced();
             }
         }
         return;
@@ -2183,10 +2225,17 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         } else if (down & HidNpadButton_A) {
             int sel = g_layout->Sel();
             if (sel == ADVANCED_COUNT) {
-                scan_backup_dirs();
-                g_mode = 10;
-                g_layout->SetSel(0);
-                this->RefreshAllBackups();
+                char tok[256] = {0};
+                if (show_keyboard("GitHub token",
+                                  "Paste personal access token (empty to clear)",
+                                  g_settings.github_token, tok, sizeof(tok))) {
+                    snprintf(g_settings.github_token,
+                             sizeof(g_settings.github_token), "%s", tok);
+                    settings_save(&g_settings);
+                    net_set_auth(g_settings.github_token);
+                    this->RefreshAdvanced();
+                    this->Toast(tok[0] ? "Token saved" : "Token cleared");
+                }
             } else {
                 this->ToggleSetting();
             }
@@ -2197,8 +2246,9 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     if (g_mode == 10) {
         if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
-            g_mode = 9;
-            this->RefreshAdvanced();
+            g_mode = 3;
+            this->RefreshSettings();
+            g_layout->SetSel(g_settings_sel);
         } else if (down & HidNpadButton_A) {
             s32 sel = g_layout->Sel();
             if (sel >= 0 && sel < (int)g_allbk.size() && g_allbk[sel].app_idx >= 0) {
@@ -2332,7 +2382,24 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         pin_idx = (int)opts.size();
         opts.push_back(pinned ? "Unpin version" : "Pin version");
         opts.push_back("Cancel");
-        int r = this->CreateShowDialog("Actions", g_cfg.apps[i].name, opts,
+        const char *iv = g_cfg.apps[i].version;
+        char detail[512];
+        long fsz = file_size(g_cfg.apps[i].path);
+        char szstr[32] = "";
+        if (fsz > 0) {
+            if (fsz >= 1024L * 1024)
+                snprintf(szstr, sizeof(szstr), "%.1f MB",
+                         (double)fsz / (1024.0 * 1024.0));
+            else
+                snprintf(szstr, sizeof(szstr), "%ld KB", fsz / 1024);
+        }
+        snprintf(detail, sizeof(detail), "%s\n%s\nVersion: %s%s%s",
+                 g_cfg.apps[i].path,
+                 szstr[0] ? szstr : "(not installed)",
+                 iv[0] ? iv : "(unknown)",
+                 g_latest[i].empty() ? "" : "  ->  ",
+                 g_latest[i].empty() ? "" : g_latest[i].c_str());
+        int r = this->CreateShowDialog(g_cfg.apps[i].name, detail, opts,
                                        true);
         if (r == 0) {
             g_force = false;
