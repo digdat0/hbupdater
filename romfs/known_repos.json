@@ -1,6 +1,34 @@
 {
   "apps": [
     {
+      "name": "Ticobro",
+      "nacp_name": [
+        "Ticobro"
+      ],
+      "repo": "StonedModder/Ticobro",
+      "asset": "Ticbro.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.0.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/Ticbro.nro"
+    },
+    {
+      "name": "TotK Unexplored",
+      "nacp_name": [
+        "TotK Unexplored"
+      ],
+      "repo": "lud99/totk-unexplored",
+      "asset": "totk-unexplored.nro",
+      "asset_kind": "nro",
+      "tag_example": "2.0.1",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/totk-unexplored.nro"
+    },
+    {
       "name": "tico",
       "nacp_name": [
         "tico"
