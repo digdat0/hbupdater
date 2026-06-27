@@ -34,20 +34,31 @@ int version_cmp(const char *a, const char *b) {
     return 0;
 }
 
-/* Case-insensitive glob match supporting '*' and '?'. */
+/* Case-insensitive glob match supporting '*' and '?'. Iterative to avoid
+ * stack overflow on patterns with many '*' characters. */
 static bool wmatch(const char *p, const char *s) {
-    if (!*p) {
-        return !*s;
+    const char *pback = NULL, *sback = NULL;
+    while (*s) {
+        if (*p == '*') {
+            pback = ++p;
+            sback = s;
+            continue;
+        }
+        if (*p == '?' ||
+            tolower((unsigned char)*p) == tolower((unsigned char)*s)) {
+            p++;
+            s++;
+            continue;
+        }
+        if (pback) {
+            p = pback;
+            s = ++sback;
+            continue;
+        }
+        return false;
     }
-    if (*p == '*') {
-        return wmatch(p + 1, s) || (*s && wmatch(p, s + 1));
-    }
-    if (*p == '?') {
-        return *s && wmatch(p + 1, s + 1);
-    }
-    return *s &&
-           tolower((unsigned char)*p) == tolower((unsigned char)*s) &&
-           wmatch(p + 1, s + 1);
+    while (*p == '*') p++;
+    return !*p;
 }
 
 /* Pick the download URL (and byte size) of the asset matching `pat` on one

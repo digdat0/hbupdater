@@ -331,11 +331,21 @@ int backup_list(const char *repo, BackupInfo *out, int max) {
     return n;
 }
 
+static bool id_safe(const char *id) {
+    if (!id || !id[0] || id[0] == '.') return false;
+    for (const char *p = id; *p; p++) {
+        if (*p == '/' || *p == '\\') return false;
+        if (*p == '.' && *(p + 1) == '.') return false;
+    }
+    return true;
+}
+
 bool backup_revert_id(const char *repo, const char *id, char *prior_version,
                       size_t pv_sz) {
     if (prior_version && pv_sz) {
         prior_version[0] = '\0';
     }
+    if (!id_safe(id)) return false;
     char appdir[340], iddir[400], man[480], filesdir[470];
     if (!app_dir(repo, appdir, sizeof(appdir)) ||
         !joinp(iddir, sizeof(iddir), appdir, id) ||
@@ -394,6 +404,7 @@ bool backup_revert_id(const char *repo, const char *id, char *prior_version,
 }
 
 bool backup_delete_id(const char *repo, const char *id) {
+    if (!id_safe(id)) return false;
     char appdir[340], iddir[400];
     if (!app_dir(repo, appdir, sizeof(appdir)) ||
         !joinp(iddir, sizeof(iddir), appdir, id)) {

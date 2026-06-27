@@ -188,7 +188,6 @@ static const char *basename_of(const char *path) {
     return s ? s + 1 : path;
 }
 
-static long file_size(const char *path); // defined in the log-viewer section
 
 // True if `title` exactly matches one of the '\n'-separated aliases (ci).
 static bool title_in_aliases(const char *aliases, const char *title) {
@@ -2176,7 +2175,15 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                 char repo[128] = {0};
                 if (show_keyboard("Add repo", "owner/repo (e.g. switchbrew/nx-hbmenu)",
                                   "", repo, sizeof(repo))) {
-                    if (!repo[0] || !strchr(repo, '/')) {
+                    bool repo_ok = repo[0] && strchr(repo, '/');
+                    for (const char *rp = repo; repo_ok && *rp; rp++) {
+                        char c = *rp;
+                        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                              (c >= '0' && c <= '9') || c == '-' || c == '_' ||
+                              c == '.' || c == '/'))
+                            repo_ok = false;
+                    }
+                    if (!repo_ok) {
                         this->ToastErr("Invalid format (need owner/repo)");
                     } else if (apps_find(&g_cfg, repo) >= 0) {
                         this->ToastErr("Already tracked");

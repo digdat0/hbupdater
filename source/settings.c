@@ -3,6 +3,7 @@
 #include "jsonutil.h"
 #include "fsutil.h"
 
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -75,14 +76,15 @@ bool settings_save(const Settings *s) {
             "  \"install_sysmodules\": %s,\n"
             "  \"install_payloads\": %s,\n"
             "  \"auto_backup\": %s,\n"
-            "  \"github_token\": \"%s\"\n"
-            "}\n",
+            "  \"github_token\": ",
             s->first_run_done ? "true" : "false",
             s->scan_on_launch ? "true" : "false",
             s->install_overlays ? "true" : "false",
             s->install_sysmodules ? "true" : "false",
             s->install_payloads ? "true" : "false",
-            s->auto_backup ? "true" : "false", s->github_token);
+            s->auto_backup ? "true" : "false");
+    json_write_escaped(f, s->github_token);
+    fputs("\n}\n", f);
     fclose(f);
     return true;
 }
