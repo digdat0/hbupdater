@@ -48,6 +48,7 @@ typedef struct {
     char asset[96];    /* release asset filename/glob ("" -> "*.nro") */
     char kind[8];      /* "nro"(default)/"ovl"/"bin"/"zip"/"7z" */
     bool prerelease;   /* consider prereleases when checking */
+    bool pinned;       /* locked: CheckAll skips this app */
 } App;
 
 typedef struct {

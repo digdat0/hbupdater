@@ -81,6 +81,8 @@ void apps_load(AppsConfig *cfg) {
                           a->kind, sizeof(a->kind));
                 a->prerelease = json_bool(
                     js, tok, json_obj_get(js, tok, child, "prerelease"));
+                a->pinned = json_bool(
+                    js, tok, json_obj_get(js, tok, child, "pinned"));
                 if (!a->kind[0]) {
                     sset(a->kind, sizeof(a->kind), "nro");
                 }
@@ -126,6 +128,7 @@ bool apps_save(const AppsConfig *cfg) {
         json_write_escaped(f, a->kind);
         fputs(a->prerelease ? ", \"prerelease\": true" : ", \"prerelease\": false",
               f);
+        fputs(a->pinned ? ", \"pinned\": true" : ", \"pinned\": false", f);
         fputs(" }", f);
         fputs(i + 1 < cfg->count ? ",\n" : "\n", f);
     }

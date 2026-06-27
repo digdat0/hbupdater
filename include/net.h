@@ -22,6 +22,10 @@ void net_log(const char *fmt, ...);
  * API rate limit from 60/hr to 5000/hr. The token is never logged. */
 void net_set_auth(const char *token);
 
+/* Last-seen GitHub API rate-limit remaining count. Updated after each http_get
+ * that returns an X-RateLimit-Remaining header. -1 = unknown. */
+int net_rate_remaining(void);
+
 /* Progress callback: return non-zero to abort the transfer. */
 typedef int (*net_progress_cb)(void *userdata, uint64_t now, uint64_t total);
 

@@ -618,7 +618,8 @@ static void worker_main(void *) {
         g_check_total = g_cfg.count;
         g_check_done = 0;
         for (int i = 0; i < g_cfg.count; i++) {
-            if (!(g_check_stale && app_is_fresh(i))) {
+            if (!g_cfg.apps[i].pinned &&
+                !(g_check_stale && app_is_fresh(i))) {
                 job_check(i);
             }
             g_check_done = i + 1;
@@ -826,10 +827,18 @@ void MainApplication::Refresh() {
             outdated++;
         }
     }
-    char st[64];
-    if (outdated > 0) {
+    int rate = net_rate_remaining();
+    char st[96];
+    if (outdated > 0 && rate >= 0) {
+        snprintf(st, sizeof(st), "%d app%s  %d update%s  API:%d", g_cfg.count,
+                 g_cfg.count == 1 ? "" : "s", outdated, outdated == 1 ? "" : "s",
+                 rate);
+    } else if (outdated > 0) {
         snprintf(st, sizeof(st), "%d app%s  %d update%s", g_cfg.count,
                  g_cfg.count == 1 ? "" : "s", outdated, outdated == 1 ? "" : "s");
+    } else if (rate >= 0) {
+        snprintf(st, sizeof(st), "%d app%s  API:%d", g_cfg.count,
+                 g_cfg.count == 1 ? "" : "s", rate);
     } else {
         snprintf(st, sizeof(st), "%d app%s", g_cfg.count,
                  g_cfg.count == 1 ? "" : "s");
@@ -843,15 +852,20 @@ void MainApplication::Refresh() {
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
+    const pu::ui::Color pin_clr(180, 160, 220, 255);
     for (int i = 0; i < g_cfg.count; i++) {
         const char *iv = g_cfg.apps[i].version;
         std::string ver = iv[0] ? iv : "-";
         std::string status = g_status[i];
-        if (status.empty()) {
+        if (g_cfg.apps[i].pinned) {
+            status = "pinned";
+        } else if (status.empty()) {
             status = iv[0] ? "" : "not checked";
         }
+        pu::ui::Color sc = g_cfg.apps[i].pinned ? pin_clr
+                                                 : state_color(g_state[i]);
         g_layout->AddRow3(g_cfg.apps[i].name, ver, status, name_clr, dim_clr,
-                          state_color(g_state[i]));
+                          sc);
     }
     if (g_cfg.count == 0) {
         g_layout->AddRow3("(no recognized apps - update catalog in settings)",
@@ -1126,7 +1140,7 @@ void MainApplication::RefreshCatalog() {
     }
     g_layout->SetTitle("Supported apps");
     g_layout->SetStatus(st);
-    g_layout->SetFooter("B back  ZL/ZR page  + exit");
+    g_layout->SetFooter("A info  B back  ZL/ZR page  + exit");
     g_layout->SetColumns("Name", "Kind", "Status");
 
     s32 keep = g_layout->Sel();
@@ -1839,6 +1853,21 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         if (down & HidNpadButton_Plus) { this->Close(); return; }
         if (down & HidNpadButton_B) {
             this->CloseCatalog();
+        } else if (down & HidNpadButton_A) {
+            s32 sel = g_layout->Sel();
+            if (sel >= 0 && sel < g_catalog.count) {
+                const CatalogEntry *e = &g_catalog.items[sel];
+                bool tracked = apps_find(&g_cfg, e->repo) >= 0;
+                char info[1024];
+                snprintf(info, sizeof(info),
+                         "Repo: %s\nPath: %s\nKind: %s\nAsset: %s\n"
+                         "Prerelease: %s\nStatus: %s",
+                         e->repo, e->path, e->kind,
+                         e->asset[0] ? e->asset : "(default)",
+                         e->prerelease ? "yes" : "no",
+                         tracked ? "tracked" : "not tracked");
+                this->CreateShowDialog(e->name, info, {"OK"}, true);
+            }
         }
         return;
     }
@@ -2012,15 +2041,37 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         if (i < 0 || i >= g_cfg.count) {
             return;
         }
+        // Info dialog before the action menu
+        {
+            const App &a = g_cfg.apps[i];
+            char info[1024];
+            snprintf(info, sizeof(info),
+                     "Repo: %s\nInstalled: %s\nLatest: %s\nPath: %s\n"
+                     "Kind: %s  Asset: %s\nPinned: %s",
+                     a.repo,
+                     a.version[0] ? a.version : "-",
+                     g_latest[i].empty() ? "-" : g_latest[i].c_str(),
+                     a.path, a.kind,
+                     a.asset[0] ? a.asset : "(default)",
+                     a.pinned ? "yes" : "no");
+            int r = this->CreateShowDialog(a.name, info, {"Actions", "Close"},
+                                           true);
+            if (r != 0) {
+                return;
+            }
+        }
         bool has_backup = backup_exists(g_cfg.apps[i].repo);
+        bool pinned = g_cfg.apps[i].pinned;
         std::vector<std::string> opts = {"Check / Update"};
-        int manage_idx = -1, force_idx = -1;
+        int manage_idx = -1, force_idx = -1, pin_idx = -1;
         if (has_backup) {
             manage_idx = (int)opts.size();
             opts.push_back("Manage backups");
         }
         force_idx = (int)opts.size();
         opts.push_back("Force reinstall");
+        pin_idx = (int)opts.size();
+        opts.push_back(pinned ? "Unpin version" : "Pin version");
         opts.push_back("Cancel");
         int r = this->CreateShowDialog("Actions", g_cfg.apps[i].name, opts,
                                        true);
@@ -2032,6 +2083,11 @@ void MainApplication::HandleInput(u64 down, u64 held) {
         } else if (r == force_idx) {
             g_force = true;
             this->StartCheck(i, true);
+        } else if (r == pin_idx) {
+            g_cfg.apps[i].pinned = !g_cfg.apps[i].pinned;
+            apps_save(&g_cfg);
+            this->Refresh();
+            this->Toast(g_cfg.apps[i].pinned ? "Pinned" : "Unpinned");
         }
     } else if (down & HidNpadButton_Minus) {
         if (i >= 0 && i < g_cfg.count) {

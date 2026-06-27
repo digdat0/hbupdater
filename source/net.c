@@ -12,10 +12,13 @@
 #define USER_AGENT "HBUpdater (libnx)"
 
 static bool g_ready = false;
+static int g_rate_remaining = -1;
 
 /* "Authorization: Bearer <token>" when a GitHub token is configured, else "".
  * Deliberately NOT included in net_log output so it never leaks to debug.log. */
 static char g_auth[320] = "";
+
+int net_rate_remaining(void) { return g_rate_remaining; }
 
 void net_set_auth(const char *token) {
     if (token && token[0]) {
@@ -97,6 +100,15 @@ static size_t mem_write(void *ptr, size_t size, size_t nmemb, void *ud) {
     return add;
 }
 
+static size_t header_cb(char *buf, size_t size, size_t nitems, void *ud) {
+    (void)ud;
+    size_t len = size * nitems;
+    if (len > 24 && strncasecmp(buf, "x-ratelimit-remaining:", 22) == 0) {
+        g_rate_remaining = atoi(buf + 22);
+    }
+    return len;
+}
+
 char *http_get(const char *url, long *http_code, size_t *out_len) {
     CURL *c = curl_easy_init();
     if (!c) {
@@ -119,6 +131,8 @@ char *http_get(const char *url, long *http_code, size_t *out_len) {
     curl_easy_setopt(c, CURLOPT_USERAGENT, USER_AGENT);
     curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, mem_write);
     curl_easy_setopt(c, CURLOPT_WRITEDATA, &m);
+    curl_easy_setopt(c, CURLOPT_HEADERFUNCTION, header_cb);
+    curl_easy_setopt(c, CURLOPT_HEADERDATA, NULL);
     curl_easy_setopt(c, CURLOPT_TIMEOUT, 60L);
     curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 20L);
     if (hdrs) {
