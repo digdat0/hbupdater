@@ -28,9 +28,39 @@ void net_set_auth(const char *token) {
     }
 }
 
+/* Truncate the debug log if it exceeds this size. Keeps the newest half. */
+#define LOG_MAX_SIZE (512L * 1024)
+
+static void log_rotate(void) {
+    FILE *f = fopen(LOG_PATH, "rb");
+    if (!f) return;
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    if (sz <= LOG_MAX_SIZE) { fclose(f); return; }
+    long keep = LOG_MAX_SIZE / 2;
+    fseek(f, sz - keep, SEEK_SET);
+    char *buf = (char *)malloc((size_t)keep);
+    if (!buf) { fclose(f); return; }
+    size_t rd = fread(buf, 1, (size_t)keep, f);
+    fclose(f);
+    /* Drop the first partial line. */
+    size_t start = 0;
+    for (size_t i = 0; i < rd; i++) {
+        if (buf[i] == '\n') { start = i + 1; break; }
+    }
+    f = fopen(LOG_PATH, "wb");
+    if (f) {
+        fputs("... (log rotated) ...\n", f);
+        if (start < rd) fwrite(buf + start, 1, rd - start, f);
+        fclose(f);
+    }
+    free(buf);
+}
+
 /* Append a line to the debug log so failures are diagnosable on-device. */
 void net_log(const char *fmt, ...) {
     fs_mkdir_p(CONFIG_DIR);
+    log_rotate();
     FILE *f = fopen(LOG_PATH, "a");
     if (!f) {
         return;
@@ -122,7 +152,7 @@ char *http_get(const char *url, long *http_code, size_t *out_len) {
     }
 
     struct curl_slist *hdrs = NULL;
-    if (g_auth[0]) {
+    if (g_auth[0] && strncmp(url, "https://api.github.com", 22) == 0) {
         hdrs = curl_slist_append(hdrs, g_auth);
     }
 
@@ -173,8 +203,7 @@ struct dl_ctx {
 
 static size_t file_write(void *ptr, size_t size, size_t nmemb, void *ud) {
     struct dl_ctx *d = (struct dl_ctx *)ud;
-    /* curl expects the number of BYTES handled; fwrite returns item count. */
-    return fwrite(ptr, size, nmemb, d->fp) * size;
+    return fwrite(ptr, 1, size * nmemb, d->fp);
 }
 
 static int xfer_info(void *ud, curl_off_t dltotal, curl_off_t dlnow,
@@ -216,7 +245,7 @@ bool http_download(const char *url, const char *dest_path,
     if (extra_header && extra_header[0]) {
         hdrs = curl_slist_append(hdrs, extra_header);
     }
-    if (g_auth[0]) {
+    if (g_auth[0] && strncmp(url, "https://api.github.com", 22) == 0) {
         hdrs = curl_slist_append(hdrs, g_auth);
     }
 
@@ -229,6 +258,8 @@ bool http_download(const char *url, const char *dest_path,
     curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, xfer_info);
     curl_easy_setopt(c, CURLOPT_XFERINFODATA, &d);
     curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 20L);
+    curl_easy_setopt(c, CURLOPT_LOW_SPEED_LIMIT, 1L);
+    curl_easy_setopt(c, CURLOPT_LOW_SPEED_TIME, 90L);
     curl_easy_setopt(c, CURLOPT_FAILONERROR, 1L); /* treat 4xx/5xx as errors */
     if (resume_from > 0) {
         curl_easy_setopt(c, CURLOPT_RESUME_FROM_LARGE,

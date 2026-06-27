@@ -1217,7 +1217,10 @@ void MainApplication::Tick() {
     }
     if (job == JOB_SELFINSTALL) {
         if (g_self_ok) {
-            this->Toast("Update staged - restart to apply");
+            this->CreateShowDialog("Update ready",
+                "The update has been downloaded.\n"
+                "Press + to exit, then relaunch HBUpdater to apply it.",
+                {"OK"}, true);
         } else {
             this->ToastErr(g_fail_msg[0] ? g_fail_msg : "App update failed");
         }
@@ -1513,7 +1516,7 @@ void MainApplication::OpenLogs() {
 void MainApplication::RefreshLogMenu() {
     g_layout->SetTitle("View logs");
     g_layout->SetStatus("");
-    g_layout->SetFooter("A open  B back  + exit");
+    g_layout->SetFooter("A open  X clear  B back  + exit");
     g_layout->SetColumns("Log", "", "Size");
     s32 keep = g_layout->Sel();
     g_layout->ClearList();
@@ -1702,6 +1705,7 @@ void MainApplication::RefreshExcluded() {
     g_layout->SetFooter("A re-include  B back  + exit");
     g_layout->SetColumns("Name", "", "Repo");
     g_layout->SetColumnWidths(0, 580);
+    s32 keep = g_layout->Sel();
     g_layout->ClearList();
     const pu::ui::Color name_clr(232, 234, 240, 255);
     const pu::ui::Color dim_clr(170, 175, 185, 255);
@@ -1724,7 +1728,7 @@ void MainApplication::RefreshExcluded() {
             g_layout->AddRow3(name, "", repo, name_clr, dim_clr, dim_clr);
         }
     }
-    g_layout->SetSel(0);
+    g_layout->SetSel(keep);
 }
 
 void MainApplication::Unexclude() {
@@ -2197,6 +2201,9 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                             apps_save(&g_cfg);
                             seed_states_from_cache();
                             this->Toast(std::string("Added ") + repo);
+                            int ni = apps_find(&g_cfg, repo);
+                            if (ni >= 0)
+                                this->StartCheck(ni, false);
                         } else {
                             this->ToastErr("App list full");
                         }
@@ -2278,6 +2285,19 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             g_mode = 3;
             this->RefreshSettings();
             g_layout->SetSel(g_settings_sel);
+        } else if (down & HidNpadButton_X) {
+            int logsel = g_layout->Sel();
+            if (logsel >= 0 && logsel < 3) {
+                long sz = file_size(LOG_PATHS[logsel]);
+                if (sz <= 0) {
+                    this->Toast("Already empty");
+                } else if (this->Confirm("Clear log",
+                               std::string("Clear ") + LOG_TITLES[logsel] + "?")) {
+                    remove(LOG_PATHS[logsel]);
+                    this->RefreshLogMenu();
+                    this->Toast("Cleared");
+                }
+            }
         } else if (down & HidNpadButton_A) {
             int logsel = g_layout->Sel();
             if (logsel == 0) {
@@ -2376,6 +2396,8 @@ void MainApplication::HandleInput(u64 down, u64 held) {
     int i = (sel >= 0 && sel < (int)g_filt_map.size()) ? g_filt_map[sel] : -1;
     if (down & HidNpadButton_A) {
         if (i < 0 || i >= g_cfg.count) {
+            if (g_cfg.count == 0)
+                this->Toast("No apps tracked - press R for settings");
             return;
         }
         bool has_backup = backup_exists(g_cfg.apps[i].repo);

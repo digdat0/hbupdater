@@ -1,5 +1,9 @@
 #include <MainApplication.hpp>
 
+extern "C" {
+#include "net.h"
+}
+
 int main(int argc, char **argv) {
     // hbloader passes the launched .nro path as argv[0]; used for self-update.
     MainApplication::SetLaunchPath((argc > 0 && argv[0]) ? argv[0] : "");
@@ -28,5 +32,6 @@ int main(int argc, char **argv) {
         diagAbortWithResult(rc);
     }
     main->Show();
+    net_exit();
     return 0;
 }
