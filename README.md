@@ -1,5 +1,8 @@
 # Homebrew Updater (HBUpdater)
 
+> **ALPHA SOFTWARE — USE AT YOUR OWN RISK.**
+> This project is in early development. Features may be incomplete, unstable, or change without notice. Back up your SD card before use.
+
 A Nintendo Switch homebrew app that keeps your **other** homebrew up to date.
 HBUpdater scans your SD card for installed `.nro` apps, matches them against a
 catalog of known GitHub repos, and lets you check for updates and install them
