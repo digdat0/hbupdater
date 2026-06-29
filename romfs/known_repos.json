@@ -406,7 +406,7 @@
       "tag_example": "v2.23.2",
       "prerelease": false,
       "author": "HamletDuFromage",
-      "default_path": "sdmc:/switch/aio-switch-updater.nro",
+      "default_path": "sdmc:/switch/aio-switch-updater/aio-switch-updater.nro",
       "category": ""
     },
     {
