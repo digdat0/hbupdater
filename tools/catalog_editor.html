@@ -228,7 +228,8 @@ function renderCatalog() {
       '<td style="min-width:190px"><input type="text" data-i="' + idx + '" data-k="default_path" value="' + esc(a.default_path) + '"></td>' +
       '<td style="text-align:center"><input type="checkbox" data-i="' + idx + '" data-k="prerelease"' + (a.prerelease ? ' checked' : '') + '></td>' +
       '<td class="status" data-cstatus="' + idx + '"><button class="btn alt sm" data-ccheck="' + idx + '">check</button></td>' +
-      '<td><button class="btn del sm" data-del="' + idx + '">✕</button></td>';
+      '<td>' + (a._new ? '<button class="btn add sm" data-confirm="' + idx + '" title="Confirm entry">✓</button> ' : '') +
+      '<button class="btn del sm" data-del="' + idx + '">✕</button></td>';
     tb.appendChild(tr);
   });
   $('catCount').textContent = shown + ' / ' + apps.length + ' apps';
@@ -249,6 +250,13 @@ function wireCatalog() {
   tb.querySelectorAll('select[data-k=asset_kind]').forEach(s => s.addEventListener('change', () => apps[+s.dataset.i].asset_kind = s.value));
   tb.querySelectorAll('input[type=checkbox][data-k=prerelease]').forEach(c => c.addEventListener('change', () => apps[+c.dataset.i].prerelease = c.checked));
   tb.querySelectorAll('[data-ccheck]').forEach(b => b.addEventListener('click', () => checkInto(apps[+b.dataset.ccheck].repo, document.querySelector('[data-cstatus="' + b.dataset.ccheck + '"]'))));
+  tb.querySelectorAll('[data-confirm]').forEach(b => b.addEventListener('click', () => {
+    const i = +b.dataset.confirm;
+    delete apps[i]._new;
+    const tr = b.closest('tr');
+    tr.classList.remove('new');
+    b.remove();
+  }));
   tb.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
     const i = +b.dataset.del;
     if (!confirm('Delete "' + (apps[i].name || apps[i].repo || 'this entry') + '"?')) return;
