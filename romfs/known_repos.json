@@ -1,6 +1,160 @@
 {
   "apps": [
     {
+      "name": "uManager",
+      "nacp_name": [
+        "uManager"
+      ],
+      "repo": "Xortroll/uLaunch",
+      "asset": "uManager.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.2.4",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/uManager.nro"
+    },
+    {
+      "name": "BomberManNX",
+      "nacp_name": [
+        "BomberManNX"
+      ],
+      "repo": "SwitchGDX/Bomberman-SwitchGDX",
+      "asset": "BomberManNX.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.0.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/BomberManNX/BomberManNX.nro"
+    },
+    {
+      "name": "Dusk",
+      "nacp_name": [
+        "Dusk"
+      ],
+      "repo": "givethesourceplox/dusklight-nx",
+      "asset": "dusk.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.4.1.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/dusk.nro"
+    },
+    {
+      "name": "Homebrew Updater",
+      "nacp_name": [
+        "Homebrew Updater"
+      ],
+      "repo": "digdat0/hbupdater",
+      "asset": "HBUpdater.nro",
+      "asset_kind": "nro",
+      "tag_example": "0.3.4",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/hbupdater/HBUpdater.nro"
+    },
+    {
+      "name": "LiteFoil",
+      "nacp_name": [
+        "LiteFoil"
+      ],
+      "repo": "ahoyallu/LiteFoil",
+      "asset": "LiteFoil.nro",
+      "asset_kind": "nro",
+      "tag_example": "22.5.2",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/LiteFoil.nro"
+    },
+    {
+      "name": "TicoDL+",
+      "nacp_name": [
+        "TicoDL+"
+      ],
+      "repo": "digdat0/ticodlplus",
+      "asset": "TicoDLplus.nro",
+      "asset_kind": "nro",
+      "tag_example": "2.0.1",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/ticodlplus/TicoDLplus.nro"
+    },
+    {
+      "name": "ftpsrv",
+      "repo": "ITotalJustice/ftpsrv",
+      "nacp_name": [
+        "ftpsrv"
+      ],
+      "asset": "switch_application.zip",
+      "asset_kind": "zip",
+      "tag_example": "",
+      "prerelease": false,
+      "author": "",
+      "default_path": "sdmc:/switch/ftpsrv.nro",
+      "category": ""
+    },
+    {
+      "name": "Fizeau",
+      "repo": "averne/Fizeau",
+      "nacp_name": [
+        "Fizeau"
+      ],
+      "asset": "Fizeau-2.8.2-309b628.zip",
+      "asset_kind": "zip",
+      "tag_example": "",
+      "prerelease": false,
+      "author": "",
+      "default_path": "sdmc:/switch/Fizeau/Fizeau.nro",
+      "category": ""
+    },
+    {
+      "name": "UpThemAll",
+      "nacp_name": [
+        "UpThemAll"
+      ],
+      "repo": "HookedBehemoth/UpThemAll",
+      "asset": "UpThemAll.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.0.0",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/UpThemAll.nro"
+    },
+    {
+      "name": "EasyPower",
+      "repo": "klockee/EasyPower",
+      "nacp_name": [
+        "EasyPower"
+      ],
+      "asset": "AA-Reboot.nro",
+      "asset_kind": "nro",
+      "tag_example": "",
+      "prerelease": false,
+      "author": "",
+      "default_path": "sdmc:/switch/EasyPower.nro",
+      "category": ""
+    },
+    {
+      "name": "90DNS Testing Utlity",
+      "nacp_name": [
+        "90DNS Testing Utlity"
+      ],
+      "repo": "meganukebmp/Switch_90DNS_tester",
+      "asset": "Switch_90DNS_tester.nro",
+      "asset_kind": "nro",
+      "tag_example": "1.0.4",
+      "prerelease": false,
+      "author": "",
+      "category": "",
+      "default_path": "sdmc:/switch/Switch_90DNS_tester.nro"
+    },
+    {
       "name": "Ticobro",
       "nacp_name": [
         "Ticobro"
@@ -1031,11 +1185,11 @@
     },
     {
       "name": "Linkalho",
-      "repo": "rdmrocha/linkalho",
+      "repo": "impeeza/linkalho",
       "nacp_name": [
         "Linkalho"
       ],
-      "asset": "linkalho.zip",
+      "asset": "linkalho-v2.0.2.zip",
       "asset_kind": "zip",
       "tag_example": "v2.0.1",
       "prerelease": false,
@@ -1576,11 +1730,11 @@
     },
     {
       "name": "QuickNTP",
-      "repo": "masagrator/QuickNTP",
+      "repo": "nedex/QuickNTP",
       "nacp_name": [
         "QuickNTP"
       ],
-      "asset": "QuickNTP.nro",
+      "asset": "quickntp-1.6.0.zip",
       "asset_kind": "nro",
       "tag_example": "v1.1.0",
       "prerelease": false,
@@ -1604,20 +1758,6 @@
       "category": "tool"
     },
     {
-      "name": "REminiscence",
-      "repo": "cyxdown/reminiscence",
-      "nacp_name": [
-        "REminiscence"
-      ],
-      "asset": "reminiscence.nro",
-      "asset_kind": "nro",
-      "tag_example": "unverified",
-      "prerelease": false,
-      "author": "cyxdown",
-      "default_path": "sdmc:/switch/reminiscence/",
-      "category": ""
-    },
-    {
       "name": "RetroArch",
       "repo": "libretro/RetroArch",
       "nacp_name": [
@@ -1633,16 +1773,16 @@
     },
     {
       "name": "ReverseNX-Tool",
-      "repo": "masagrator/ReverseNX-Tool",
+      "repo": "masagrator/ReverseNX-RT",
       "nacp_name": [
         "ReverseNX-Tool"
       ],
-      "asset": "ReverseNX-Tool.nro",
+      "asset": "ReverseNX-RT-ovl.ovl",
       "asset_kind": "nro",
       "tag_example": "v3.1.2",
       "prerelease": false,
       "author": "masagrator",
-      "default_path": "sdmc:/switch/ReverseNX-Tool.nro",
+      "default_path": "sdmc:/switch/ReverseNX-RT-ovl.ovl",
       "category": ""
     },
     {
@@ -1732,7 +1872,7 @@
     },
     {
       "name": "Sphaira",
-      "repo": "ITTotalJustice/Sphaira",
+      "repo": "ITotalJustice/sphaira",
       "nacp_name": [
         "Sphaira"
       ],
@@ -1759,22 +1899,8 @@
       "category": ""
     },
     {
-      "name": "Switch-90DNS Setter",
-      "repo": "megaboy101/switch-90dns-setter",
-      "nacp_name": [
-        "90DNS Setter"
-      ],
-      "asset": "90dns-setter.nro",
-      "asset_kind": "nro",
-      "tag_example": "v1.0.0",
-      "prerelease": false,
-      "author": "megaboy101",
-      "default_path": "sdmc:/switch/90dns-setter.nro",
-      "category": ""
-    },
-    {
       "name": "Switchfin",
-      "repo": "jlippold/switchfin",
+      "repo": "dragonflylee/switchfin",
       "nacp_name": [
         "Switchfin"
       ],
@@ -1830,7 +1956,7 @@
     },
     {
       "name": "sys-clk Overlay",
-      "repo": "retroNX/sys-clk",
+      "repo": "retronx-team/sys-clk",
       "nacp_name": [
         "sys-clk Overlay"
       ],
@@ -1886,11 +2012,11 @@
     },
     {
       "name": "sys-hidplus",
-      "repo": "ndeadly/sys-hidplus",
+      "repo": "luvvyamy/sys-hidplus",
       "nacp_name": [
         "sys-hidplus"
       ],
-      "asset": "sys-hidplus.zip",
+      "asset": "sys-hidplus-1.1.7z",
       "asset_kind": "zip",
       "tag_example": "v1.0.0",
       "prerelease": true,
@@ -1900,30 +2026,16 @@
     },
     {
       "name": "sysmodule-manager",
-      "repo": "ppkantorski/sysmodule-manager",
+      "repo": "nadrino/SimpleModManager",
       "nacp_name": [
         "sysmodule-manager"
       ],
-      "asset": "sysmodule-manager.nro",
+      "asset": "SimpleModManager.nro",
       "asset_kind": "nro",
       "tag_example": "v2.0.0",
       "prerelease": false,
       "author": "ppkantorski",
       "default_path": "sdmc:/switch/sysmodule-manager.nro",
-      "category": ""
-    },
-    {
-      "name": "sys-patch",
-      "repo": "ITTotalJustice/sys-patch",
-      "nacp_name": [
-        "sys-patch"
-      ],
-      "asset": "sys-patch.zip",
-      "asset_kind": "zip",
-      "tag_example": "v1.5.1",
-      "prerelease": false,
-      "author": "ITTotalJustice",
-      "default_path": "sdmc:/atmosphere/contents/00FFFF0000000000/",
       "category": ""
     },
     {
@@ -2000,11 +2112,11 @@
     },
     {
       "name": "TinLeaf",
-      "repo": "SatatCoffee/TinLeaf",
+      "repo": "blawar/tinleaf",
       "nacp_name": [
         "TinLeaf"
       ],
-      "asset": "TinLeaf.nro",
+      "asset": "tinleaf.nro",
       "asset_kind": "nro",
       "tag_example": "v1.4.2",
       "prerelease": false,
@@ -2014,7 +2126,7 @@
     },
     {
       "name": "TinWoo Installer",
-      "repo": "mrdude2478/TinWoo-Installer",
+      "repo": "hax4dazy/TinWoo",
       "nacp_name": [
         "TinWoo Installer"
       ],
@@ -2072,11 +2184,11 @@
     },
     {
       "name": "Uae4All2",
-      "repo": "ChuiZard/uae4all2",
+      "repo": "rsn8887/uae4all2",
       "nacp_name": [
         "Uae4All2"
       ],
-      "asset": "uae4all2.nro",
+      "asset": "uae4all2_2.12_switch.zip",
       "asset_kind": "nro",
       "tag_example": "unverified",
       "prerelease": false,
@@ -2086,7 +2198,7 @@
     },
     {
       "name": "uLaunch",
-      "repo": "tallblondedude/uLaunch",
+      "repo": "Xortroll/uLaunch",
       "nacp_name": [
         "uLaunch"
       ],
