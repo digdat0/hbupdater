@@ -76,6 +76,9 @@ class MainApplication : public pu::ui::Application {
     void RefreshExcluded();      // rebuild the excluded list
     void Unexclude();            // restore the selected excluded app
 
+    void OpenUnmatched();        // settings -> unmatched apps viewer
+    void RefreshUnmatched();     // rebuild the unmatched apps list
+
     void OpenSettings();         // enter the settings/toggles screen
     void RefreshSettings();      // rebuild the settings list view
     void ToggleSetting();        // flip the selected setting + save

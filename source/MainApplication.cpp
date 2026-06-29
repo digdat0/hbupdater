@@ -39,7 +39,7 @@ static std::string g_launch_path;
 static Catalog g_catalog;        // bundled known-apps list (romfs)
 // 0=home, 1=catalog, 3=settings, 4=log-picker, 5=log-contents,
 // 6=manage-backups, 7=excluded, 8=file-install, 9=advanced, 10=all-backups,
-// 11=history-timeline
+// 11=history-timeline, 12=unmatched
 static int g_mode = 0;
 static s32 g_list_sel = 0;       // remembered tracked-list selection
 
@@ -961,7 +961,19 @@ void MainApplication::Refresh() {
         g_layout->SetInfoBar("");
 }
 
+static std::vector<int> g_unmatched_map; // indices into g_scan for unmatched apps
+
 static void update_info_bar() {
+    if (g_mode == 12) {
+        s32 sel = g_layout->Sel();
+        int i = (sel >= 0 && sel < (int)g_unmatched_map.size())
+                    ? g_unmatched_map[sel] : -1;
+        if (i >= 0 && i < (int)g_scan.size())
+            g_layout->SetInfoBar(g_scan[i].path);
+        else
+            g_layout->SetInfoBar("");
+        return;
+    }
     if (g_mode != 0) return;
     s32 sel = g_layout->Sel();
     int i = (sel >= 0 && sel < (int)g_filt_map.size()) ? g_filt_map[sel] : -1;
@@ -1380,7 +1392,7 @@ static bool *advanced_ptr(int i) {
 }
 
 // Settings main: action-only rows (no toggles on the main screen anymore)
-#define SETTINGS_ACTION_COUNT 9
+#define SETTINGS_ACTION_COUNT 10
 
 void MainApplication::OpenSettings() {
     g_list_sel = g_layout->Sel();
@@ -1405,14 +1417,19 @@ void MainApplication::RefreshSettings() {
     char sup[24], exc[24];
     snprintf(sup, sizeof(sup), "%d apps", g_catalog.count);
     snprintf(exc, sizeof(exc), "%d", g_excludes.count);
+    int n_unmatched = 0;
+    for (auto &c : g_scan) { if (c.cat < 0) n_unmatched++; }
+    char unm[24];
+    snprintf(unm, sizeof(unm), "%d", n_unmatched);
     // 0: Update HBUpdater  1: Update catalog  2: Supported apps
-    // 3: Excluded apps  4: View logs  5: File install
-    // 6: Manage backups  7: Add repo manually  8: Advanced
+    // 3: Excluded apps  4: Unmatched apps  5: View logs  6: File install
+    // 7: Manage backups  8: Add repo manually  9: Advanced
     g_layout->AddRow3("Update HBUpdater", std::string("v") + APP_VERSION_STR, ">",
                       name_clr, dim_clr, act);
     g_layout->AddRow3("Update catalog", sup, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Supported apps", sup, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Excluded apps", exc, ">", name_clr, dim_clr, act);
+    g_layout->AddRow3("Unmatched apps", unm, ">", name_clr, dim_clr, act);
     g_layout->AddRow3("View logs", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("File install", "", ">", name_clr, dim_clr, act);
     g_layout->AddRow3("Manage backups", "", ">", name_clr, dim_clr, act);
@@ -1761,6 +1778,53 @@ void MainApplication::Unexclude() {
     }
     this->RefreshExcluded();
     this->Toast(readded ? "Re-included" : "Re-included (rescan to detect)");
+}
+
+// ---- unmatched apps (mode 12) ---------------------------------------------
+void MainApplication::OpenUnmatched() {
+    g_settings_sel = g_layout->Sel();
+    g_mode = 12;
+    g_layout->SetSel(0);
+    this->RefreshUnmatched();
+}
+
+static std::string file_ext(const std::string &path) {
+    auto dot = path.rfind('.');
+    if (dot == std::string::npos) return "";
+    return path.substr(dot);
+}
+
+void MainApplication::RefreshUnmatched() {
+    g_unmatched_map.clear();
+    for (int i = 0; i < (int)g_scan.size(); i++) {
+        if (g_scan[i].cat < 0)
+            g_unmatched_map.push_back(i);
+    }
+    g_layout->SetTitle("Unmatched apps");
+    char st[40];
+    snprintf(st, sizeof(st), "%d app%s", (int)g_unmatched_map.size(),
+             g_unmatched_map.size() == 1 ? "" : "s");
+    g_layout->SetStatus(st);
+    g_layout->SetFooter("B back  + exit");
+    g_layout->SetColumns("Name", "Extension", "Version");
+    g_layout->ResetColumnWidths();
+    s32 keep = g_layout->Sel();
+    g_layout->ClearList();
+    const pu::ui::Color name_clr(232, 234, 240, 255);
+    const pu::ui::Color dim_clr(170, 175, 185, 255);
+    if (g_unmatched_map.empty()) {
+        g_layout->AddRow3("(all installed apps are recognized)", "", "",
+                          dim_clr, dim_clr, dim_clr);
+    } else {
+        for (int si : g_unmatched_map) {
+            const ScanCand &c = g_scan[si];
+            std::string ext = file_ext(c.path);
+            std::string ver = c.version.empty() ? "-" : c.version;
+            g_layout->AddRow3(c.name, ext, ver, name_clr, dim_clr, dim_clr);
+        }
+    }
+    g_layout->SetSel(keep);
+    update_info_bar();
 }
 
 // ---- manage backups -------------------------------------------------------
@@ -2163,19 +2227,21 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             } else if (sel == 3) {
                 this->OpenExcluded();
             } else if (sel == 4) {
-                this->OpenLogs();
+                this->OpenUnmatched();
             } else if (sel == 5) {
+                this->OpenLogs();
+            } else if (sel == 6) {
                 g_settings_sel = g_layout->Sel();
                 g_mode = 8;
                 g_layout->SetSel(0);
                 this->RefreshFileInstall();
-            } else if (sel == 6) {
+            } else if (sel == 7) {
                 scan_backup_dirs();
                 g_settings_sel = g_layout->Sel();
                 g_mode = 10;
                 g_layout->SetSel(0);
                 this->RefreshAllBackups();
-            } else if (sel == 7) {
+            } else if (sel == 8) {
                 char repo[128] = {0};
                 if (show_keyboard("Add repo", "owner/repo (e.g. switchbrew/nx-hbmenu)",
                                   "", repo, sizeof(repo))) {
@@ -2210,7 +2276,7 @@ void MainApplication::HandleInput(u64 down, u64 held) {
                         this->RefreshSettings();
                     }
                 }
-            } else if (sel == 8) {
+            } else if (sel == 9) {
                 g_settings_sel = g_layout->Sel();
                 g_mode = 9;
                 g_layout->SetSel(0);
@@ -2316,6 +2382,18 @@ void MainApplication::HandleInput(u64 down, u64 held) {
             g_mode = 4;
             this->RefreshLogMenu();
             g_layout->SetSel(g_logmenu_sel);
+        }
+        return;
+    }
+
+    // ---- unmatched apps ----
+    if (g_mode == 12) {
+        if (down & HidNpadButton_Plus) { this->Close(); return; }
+        if (down & HidNpadButton_B) {
+            g_layout->SetInfoBar("");
+            g_mode = 3;
+            this->RefreshSettings();
+            g_layout->SetSel(g_settings_sel);
         }
         return;
     }
